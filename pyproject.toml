@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "nagatoai"
+version = "0.1.0"
+description = "Nagato-AI is an intuitive AI Agent library that works across multiple LLMs"
+authors = ["Eddie Forson <eddie@edforson.me>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+anthropic = "^0.21.3"
+rich = "^13.7.1"
+requests = "^2.31.0"
+pytest = "^8.1.1"
+openai = "^1.14.3"
+beautifulsoup4 = "^4.12.3"
+lxml = "^5.1.0"
+pydantic = "^2.6.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
