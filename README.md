@@ -3,7 +3,7 @@
 
 # Nagato-AI
 
-![Official Nagato AI Poster](assets/Official_Nagato_AI_Poster.webp)
+![Official Nagato AI Poster](docs/assets/Official_Nagato_AI_Poster.webp)
 
 
 Nagato-AI is an intuitive AI Agent library that works across multiple LLMs.
@@ -86,7 +86,7 @@ critic_agent: Agent = AnthropicAgent(
 ...
 ```
 
-The full blow example is available here: `examples/coordinator_researcher_critic.py`
+The full blow example is available [here](docs/examples/coordinator_researcher_critic.py)
 
 ### Worker and critic agents
 
