@@ -11,13 +11,13 @@ from rich.progress import Progress, SpinnerColumn
 from bs4 import BeautifulSoup
 
 
-from nagato_ai.agent.agent import Agent
-from nagato_ai.agent.openai import OpenAIAgent
-from nagato_ai.agent.anthropic import AnthropicAgent
-from nagato_ai.agent.message import Exchange
-from nagato_ai.mission.mission import Mission
-from nagato_ai.mission.task import Task, TaskOutcome, TaskResult
-from nagato_ai.prompt.templates import (
+from nagatoai_core.agent.agent import Agent
+from nagatoai_core.agent.openai import OpenAIAgent
+from nagatoai_core.agent.anthropic import AnthropicAgent
+from nagatoai_core.agent.message import Exchange
+from nagatoai_core.mission.mission import Mission
+from nagatoai_core.mission.task import Task, TaskOutcome, TaskResult
+from nagatoai_core.prompt.templates import (
     OBJECTIVE_PROMPT,
     COORDINATOR_SYSTEM_PROMPT,
     RESEARCHER_SYSTEM_PROMPT,

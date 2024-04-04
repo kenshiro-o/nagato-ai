@@ -3,7 +3,7 @@ from typing import List, Union
 import uuid
 
 from .message import Exchange
-from nagato_ai.mission.task import Task
+from nagatoai_core.mission.task import Task
 
 
 class Agent(ABC):

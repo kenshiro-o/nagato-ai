@@ -1,17 +1,17 @@
-from anthropic import Client
+from openai import OpenAI
 from typing import List, Union
 
 from .agent import Agent
 from .message import Sender, Message, Exchange
-from nagato_ai.mission.task import Task
+from nagatoai_core.mission.task import Task
 
 
-def extract_anthropic_model_family(model: str) -> str:
+def extract_openai_model_family(model: str) -> str:
     """
-    Extracts the model family from the Anthropic model name.
-    :param model: The Anthropic model name.
+    Extracts the model family from the OpenAI model name.
+    :param model: The OpenAI model name.
     """
-    family_prefixes = ["claude", "einstein"]
+    family_prefixes = ["gpt-4", "gpt-3.5", "dalle" "davinci", "curie", "babbage", "ada"]
     for prefix in family_prefixes:
         if model.startswith(prefix):
             return prefix
@@ -19,22 +19,22 @@ def extract_anthropic_model_family(model: str) -> str:
     return model.split("-")[0]
 
 
-class AnthropicAgent(Agent):
+class OpenAIAgent(Agent):
     """
-    AnthropicAgent is an Agent that uses the Anthropic Claude API under the hood.
+    OpenAIAgent is an Agent that uses the OpenAI API under the hood.
     """
 
     def __init__(
         self,
-        client: Client,
+        client: OpenAI,
         model: str,
         role: str,
         role_description: str,
         nickname: str,
     ):
         """
-        Initializes the AnthropicAgent with the model, role, temperature and nickname.
-        :param client: The Anthropic Claude client to be used by the agent.
+        Intializes the OpenAIAgent with the model, role, temperature and nickname.
+        :param client: The OpenAI client to be used by the agent.
         :param model: The model to be used by the agent.
         :param role: The role of the agent.
         :param role_description: The role description of the agent. This is essentially the system message
@@ -44,39 +44,55 @@ class AnthropicAgent(Agent):
         self.client = client
         self.exchange_history: List[Exchange] = []
 
-    # def chat(
-    #         self, prompt: str, task: Union[Task, None], temperature: float, max_tokens: int
-    #     ) -> Exchange:
-
     def chat(
         self, prompt: str, task: Union[Task, None], temperature: float, max_tokens: int
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
         :param prompt: The current prompt.
-        :param task: The task to reason about.
+        :param history: The prompt history.
         :param temperature: The temperature of the agent.
         :param max_tokens: The maximum number of tokens to generate.
         """
-        messages = []
 
+        system_message = {
+            "role": "system",
+            "content": [
+                {
+                    "type": "text",
+                    "text": self.role_description,
+                }
+            ],
+        }
+
+        previous_messages = []
         for exchange in self.exchange_history:
-            messages.append({"role": "user", "content": exchange.user_msg.content})
-            messages.append(
+            previous_messages.append(
+                {"role": "user", "content": exchange.user_msg.content}
+            )
+            previous_messages.append(
                 {"role": "assistant", "content": exchange.agent_response.content}
             )
 
-        messages.append({"role": "user", "content": prompt})
+        current_message = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": prompt,
+                }
+            ],
+        }
+        messages = [system_message] + previous_messages + [current_message]
 
-        response = self.client.messages.create(
+        response = self.client.chat.completions.create(
             model=self.model,
-            system=self.role_description,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
         )
 
-        response_text = response.content[0].text
+        response_text = response.choices[0].message.content
 
         exchange = Exchange(
             user_msg=Message(sender=Sender.USER, content=prompt),
@@ -86,19 +102,21 @@ class AnthropicAgent(Agent):
 
         return exchange
 
+        # return OpenAI().chat(prompt, history, temperature, max_tokens)
+
     @property
     def maker(self) -> str:
         """
-        Returns the agent's model maker (e.g. Anthropic)
+        Returns the agent's model maker (e.g. OpenAI)
         """
-        return "Anthropic"
+        return "OpenAI"
 
     @property
     def family(self) -> str:
         """
-        Returns the agent's model family (e.g. claude)
+        Returns the agent's model family (e.g. GPT-4)
         """
-        return extract_anthropic_model_family(self.model)
+        return extract_openai_model_family(self.model)
 
     @property
     def history(self) -> List[Exchange]:
