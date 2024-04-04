@@ -11,13 +11,13 @@ from rich.progress import Progress, SpinnerColumn
 from bs4 import BeautifulSoup
 
 
-from agent.agent import Agent
-from agent.openai import OpenAIAgent
-from agent.anthropic import AnthropicAgent
-from agent.message import Exchange
-from mission.mission import Mission
-from mission.task import Task, TaskOutcome, TaskResult
-from prompt.templates import (
+from nagato_ai.agent.agent import Agent
+from nagato_ai.agent.openai import OpenAIAgent
+from nagato_ai.agent.anthropic import AnthropicAgent
+from nagato_ai.agent.message import Exchange
+from nagato_ai.mission.mission import Mission
+from nagato_ai.mission.task import Task, TaskOutcome, TaskResult
+from nagato_ai.prompt.templates import (
     OBJECTIVE_PROMPT,
     COORDINATOR_SYSTEM_PROMPT,
     RESEARCHER_SYSTEM_PROMPT,
@@ -43,7 +43,6 @@ def send_agent_request(
     with Progress(
         SpinnerColumn(),
         "[progress.description]{task.description}",
-        # TextColumn("[bold blue]{task.fields[title]}"),
         transient=True,
     ) as progress:
         progress.add_task(f"[cyan]Sending request to agent {agent.name}", total=None)
