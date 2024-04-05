@@ -11,7 +11,9 @@ def extract_anthropic_model_family(model: str) -> str:
     Extracts the model family from the Anthropic model name.
     :param model: The Anthropic model name.
     """
-    family_prefixes = ["claude", "einstein"]
+    family_prefixes = [
+        "claude",
+    ]
     for prefix in family_prefixes:
         if model.startswith(prefix):
             return prefix
