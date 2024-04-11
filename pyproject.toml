@@ -8,7 +8,7 @@ package-mode = true
 
 [tool.poetry.dependencies]
 python = "^3.12"
-anthropic = "^0.21.3"
+anthropic = "^0.23.1"
 rich = "^13.7.1"
 requests = "^2.31.0"
 pytest = "^8.1.1"
@@ -17,6 +17,8 @@ beautifulsoup4 = "^4.12.3"
 lxml = "^5.1.0"
 pydantic = "^2.6.4"
 python-dotenv = "^1.0.1"
+langchain = "^0.1.14"
+pydantic-settings = "^2.2.1"
 
 
 [build-system]

@@ -1,6 +1,11 @@
-OBJECTIVE_PROMPT = """Based on the following problem statement included in the <problem> tags, please do the following:
+TOOLS_AVAILABLE_TEMPLATE = """<tools_available>
+    {tools_available}
+</tools_available>"""
+
+OBJECTIVE_PROMPT = """Think step by step. Based on the following problem statement included in the <problem> tags, and the list of tools available under the <tools_available> tag, please do the following:
 1. Formulate an objective for the problem statement. Include this objective in the <objective> tags.
 2. Break down the objective into smaller tasks. Include these tasks in the <tasks><task> tags.
+3. If necessary, inside each task recommend, but do not mandate, the use of a given tool under <tools_recommended> if you believe it would aid in the completion of the task. If you do not recommend any tool then do not include a <tools_recommended> tag.
 
 ---
 Use the following example as reference:
@@ -9,6 +14,18 @@ For the following problem statement
 <problem>
 It is my mother's 60th birthday in 2 weeks. I still haven't found a gift for her. Please help me find the right gift for her birthday.
 </problem>
+
+And the following tools available:
+<tools_available>
+    <tool>
+        <name>google_form</name>
+        <description>Tool to create a questionnaire for gathering information.</description>
+    </tool>
+    <tool>
+        <name>serp_search</name>
+        <description>SEO Search</description>
+    </tool>
+</tools_available>
 
 The objective could be:
 <objective>
@@ -29,6 +46,11 @@ Then the tasks could be:
         4. **Lifestyle:** Understand her lifestyle, including whether she prefers experiences over physical gifts, or if there are any changes she's considering making to her lifestyle.
         5. **Preferences:** Get insights into her preference regarding jewelry, clothing sizes, favorite colors, authors, artists, or other personal tastes that could influence the gift choice.
       </description>
+      <tools_recommended>
+        <tool>
+            <name>google_form</name>
+        </tool>
+      </tools_recommended>
     </task>
     <task>
         <goal>Generate a comprehensive document outlining gift ideas based on the answers from the questionnaire.</goal>
@@ -56,7 +78,10 @@ For the problem statement below:
 {problem_statement}
 </problem>
 
-Please provide the objective and tasks as per the example above.
+And the tools available:
+{tools_available}
+
+Please provide the objective and tasks as per the example above. Recommend (but do not mandate) the use of tools where necessary.
 """
 
 
@@ -112,13 +137,45 @@ For the task below:
 Please provide a detailed result inside <task_result> tags.
 """
 
+# If any tools are required to complete the task, list them under the <tools_to_use> tag.
+# If you have been provided a list of tools as part of the input, then list any of these tools that are required to complete the task. Please list them under the <tools_to_use> tag in your text text response too.
+# <tools_to_use>
+#     <tool>
+#         <name>google_form</name>
+#         <inputs>
+#             <input>
+#                 <name>question_1</name>
+#                 <value>What are your hobbies and favorite leisure activities?</value>
+#             </input>
+#             <input>
+#                 <name>question_2</name>
+#                 <value>Is there something specific you have mentioned wanting or needing recently?</value>
+#             </input>
+#             <input>
+#                 <name>question_3</name>
+#                 <value>What special memories or life milestones do you cherish?</value>
+#             </input>
+#             <input>
+#                 <name>question_4</name>
+#                 <value>Do you prefer experiences over physical gifts?</value>
+#             </input>
+#             <input>
+#                 <name>question_5</name>
+#                 <value>What are your preferences regarding jewelry, clothing sizes, favorite colors, authors, artists, or other personal tastes?</value>
+#             </input>
+#         </inputs>
+#     </tool>
+# </tools_to_use>
+
+# If a tool must be used to complete the task, then I would also expect the stop_reason to be "tool_use" in the response.
+
 
 CRITIC_SYSTEM_PROMPT = """You are an AI Agent with advanced analytical capabilities. Your role is to evaluate the work of other agents and provide constructive feedback.
 When given a result from another agent, you analyze the result based on the original task's goal and description to determine wether the result from the agent satisfies the task requirements.
 """
 
 CRITIC_PROMPT = """Analyze the result provided by the agent and evaluate whether it meets the requirements of the task.
-Determine whether the task's goal has been met and ptovide detailed feedback based on your assessment on whether the result meets the requirements of the task.
+Determine whether the task's goal has been met and provide detailed feedback based on your assessment on whether the result meets the requirements of the task.
 If the requirement is not met, provide feedback on what aspects are missing or incomplete.
 If for instance a tool is required to complete the task and the agent did not use the tool, then list the tool required under the <tools_required> tag.
 ---
