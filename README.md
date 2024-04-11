@@ -143,6 +143,11 @@ for task in task_list:
     ...
 ```
 
+## Function Calling
+
+Check the full example in [here](docs/examples/coordinator_researcher_critic.py) to see how function calling works.
+We currently only support function calling for Claude 3 models. Function calling for GPT models will be available soon.
+
 # What's next
 
 Nagato is still in its very early development phase. This means that I am likely to introduce breaking changes over the next iterations of the library.
