@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nagatoai_core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Nagato-AI is an intuitive AI Agent library that works across multiple LLMs"
 authors = ["Eddie Forson <eddie@edforson.me>"]
 readme = "README.md"
