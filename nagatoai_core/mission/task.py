@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import Union
+from typing import Union, Optional
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -52,6 +53,8 @@ class Task(BaseModel):
     description: str
     result: Union[TaskResult, None] = None
     status: TaskStatus = TaskStatus.PENDING
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
 
     def update(self, result: TaskResult):
         """

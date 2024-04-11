@@ -4,6 +4,7 @@ from typing import List, Union
 from .agent import Agent
 from .message import Sender, Message, Exchange
 from nagatoai_core.mission.task import Task
+from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 
 
 def extract_openai_model_family(model: str) -> str:
@@ -45,14 +46,19 @@ class OpenAIAgent(Agent):
         self.exchange_history: List[Exchange] = []
 
     def chat(
-        self, prompt: str, task: Union[Task, None], temperature: float, max_tokens: int
+        self,
+        prompt: str,
+        tools: List[AbstractToolProvider],
+        temperature: float,
+        max_tokens: int,
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
         :param prompt: The current prompt.
-        :param history: The prompt history.
+        :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
         :param max_tokens: The maximum number of tokens to generate.
+        :return: Exchange object containing the user message and the agent response.
         """
 
         system_message = {
@@ -101,8 +107,6 @@ class OpenAIAgent(Agent):
         self.exchange_history.append(exchange)
 
         return exchange
-
-        # return OpenAI().chat(prompt, history, temperature, max_tokens)
 
     @property
     def maker(self) -> str:

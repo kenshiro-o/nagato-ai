@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 from typing import List, Union
 import uuid
 
-from .message import Exchange
+from .message import Exchange, ToolResult
 from nagatoai_core.mission.task import Task
+from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 
 
 class Agent(ABC):
@@ -41,12 +42,29 @@ class Agent(ABC):
 
     @abstractmethod
     def chat(
-        self, prompt: str, task: Union[Task, None], temperature: float, max_tokens: int
+        self,
+        prompt: str,
+        tools: List[AbstractToolProvider],
+        temperature: float,
+        max_tokens: int,
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
         :param prompt: The current prompt.
-        :param task: the task to reason about
+        :param tools: the tools available to the agent.
+        :param temperature: The temperature of the agent.
+        :param max_tokens: The maximum number of tokens to generate.
+        :return: Exchange object containing the user message and the agent response.
+        """
+        pass
+
+    @abstractmethod
+    def send_tool_run_results(
+        self, tool_results: List[ToolResult], temperature: float, max_tokens: int
+    ) -> Exchange:
+        """
+        Returns the results of the running of one or multiple tools
+        :param tool_results: The results of the running of one or multiple tools
         :param temperature: The temperature of the agent.
         :param max_tokens: The maximum number of tokens to generate.
         :return: Exchange object containing the user message and the agent response.
