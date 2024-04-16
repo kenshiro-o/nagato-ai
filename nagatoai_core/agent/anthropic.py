@@ -119,25 +119,15 @@ class AnthropicAgent(Agent):
         tool_calls: List[ToolCall] = []
 
         for response_content in response.content:
-            print(f"******** Response Type: {response_content.type} ********")
             if response_content.type == "text":
                 response_text = response_content.text
             elif response_content.type == "tool_use":
                 tool_id = response_content.id
                 tool_name = response_content.name
                 tool_input = response_content.input
-                print(
-                    f"tool_id: {tool_id} | tool_name: {tool_name} | tool_input: {tool_input}"
-                )
 
                 tc = ToolCall(id=tool_id, name=tool_name, parameters=tool_input)
                 tool_calls.append(tc)
-                print(f"******** Tool: {tc} ********")
-
-        # print(response_text)
-
-        stop_reason = response.stop_reason
-        print(f"******** Stop Reason: {stop_reason} ********")
 
         exchange = Exchange(
             user_msg=Message(sender=Sender.USER, content=prompt),
@@ -173,7 +163,6 @@ class AnthropicAgent(Agent):
             else:
                 result_str = str(tool_result.result)
 
-            # result_str = "29027058"
             final_tool_result_content += result_str + "\n"
             messages.append(
                 {
@@ -187,12 +176,6 @@ class AnthropicAgent(Agent):
                     ],
                 }
             )
-
-        # Pretty print the messages list for debugging
-        # messages_json_str = json.dumps(messages, indent=2)
-        # print(f"**** messages_json_str: {messages_json_str}")
-
-        # print(f"****messages: {messages}")
 
         response = self.client.beta.tools.messages.create(
             model=self.model,
@@ -215,7 +198,6 @@ class AnthropicAgent(Agent):
                 tool_input = response_content.input
 
                 tc = ToolCall(id=tool_id, name=tool_name, parameters=tool_input)
-                print(f"******** Tool: {tc} ********")
                 tool_calls.append(tc)
 
         exchange = Exchange(
