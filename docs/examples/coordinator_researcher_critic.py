@@ -22,7 +22,7 @@ from nagatoai_core.mission.task import Task, TaskStatus, TaskOutcome, TaskResult
 from nagatoai_core.tool.registry import ToolRegistry
 from nagatoai_core.tool.abstract_tool import AbstractTool
 from nagatoai_core.tool.lib.readwise.book_finder import (
-    ReadwiseBookFinderTool,
+    ReadwiseDocumentFinderTool,
 )
 from nagatoai_core.tool.lib.readwise.book_highlights_lister import (
     ReadwiseBookHighlightsListerTool,
@@ -36,7 +36,7 @@ from nagatoai_core.prompt.templates import (
     OBJECTIVE_PROMPT,
     COORDINATOR_SYSTEM_PROMPT,
     RESEARCHER_SYSTEM_PROMPT,
-    RESEARCHER_TASK_PROMPT,
+    RESEARCHER_TASK_PROMPT_WITH_EXAMPLE,
     CRITIC_SYSTEM_PROMPT,
     CRITIC_PROMPT,
 )
@@ -128,7 +128,7 @@ def process_task(
     # TODO - We only need to send the examples in the first prompt to the agent (i.e. it has empty history).
     #        If the agent has already seen the examples, we can skip sending them again.
     #        This would require us to use a slightly different prompt template for the researcher agent
-    task_prompt = RESEARCHER_TASK_PROMPT.format(
+    task_prompt = RESEARCHER_TASK_PROMPT_WITH_EXAMPLE.format(
         goal=task.goal, description=task.description
     )
     worker_exchange = send_agent_request(
@@ -239,7 +239,7 @@ def main():
     # )
 
     tool_registry = ToolRegistry()
-    tool_registry.register_tool(ReadwiseBookFinderTool)
+    tool_registry.register_tool(ReadwiseDocumentFinderTool)
     tool_registry.register_tool(ReadwiseBookHighlightsListerTool)
     tool_registry.register_tool(HumanConfirmInputTool)
 

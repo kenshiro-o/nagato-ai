@@ -1,5 +1,4 @@
-from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional, Type
+from typing import Any, Type
 
 from pydantic import BaseModel, Field
 import requests

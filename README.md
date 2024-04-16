@@ -143,10 +143,64 @@ for task in task_list:
     ...
 ```
 
-## Function Calling
+## Tool calling
 
-Check the full example in [here](docs/examples/coordinator_researcher_critic.py) to see how function calling works.
-We currently only support function calling for Claude 3 models. Function calling for GPT models will be available soon.
+Check the full example [here](docs/examples/coordinator_researcher_critic.py) to see how tool calling works.
+We now support tool calling for both Claude 3 and GPT models.
+
+
+### Tool creation
+
+Creating a tool is straightforward. You must create have these two elements in place for a tool to be usable:
+
+1. A config class that contains the parameters that your tool will be called with
+2. A tool class that inherits from `AbstractTool`, and contains the main logic for your tool.
+
+For instance the below shows how we've created a tool to get the user to confirm yes/no in the terminal
+
+```python
+from typing import Any, Type
+
+from pydantic import BaseModel, Field
+from rich.prompt import Confirm
+
+from nagatoai_core.tool.abstract_tool import AbstractTool
+
+
+class HumanConfirmInputConfig(BaseModel):
+    """
+    HumanConfirmInputConfig represents the configuration for the HumanConfirmInputTool.
+    """
+
+    message: str = Field(
+        ...,
+        description="The message to display to the user to confirm whether to proceed or not",
+    )
+
+
+class HumanConfirmInputTool(AbstractTool):
+    """
+    HumanConfirmInputTool represents a tool that prompts the user to confirm whether to proceed or not.
+    """
+
+    name: str = "human_confirm_input"
+    description: str = (
+        """Prompts the user to confirm whether to proceed or not. Returns a boolean value indicating the user's choice."""
+    )
+    args_schema: Type[BaseModel] = HumanConfirmInputConfig
+
+    def _run(self, config: HumanConfirmInputConfig) -> Any:
+        """
+        Prompts the user to confirm whether to proceed or not.
+        :param message: The message to display to the user to confirm whether to proceed or not.
+        :return: A boolean value indicating the user's choice.
+        """
+        confirm = Confirm.ask("[bold yellow]" + config.message + "[/bold yellow]")
+
+        return confirm
+```
+
+
 
 # What's next
 
@@ -154,13 +208,13 @@ Nagato is still in its very early development phase. This means that I am likely
 
 Moreover, there is a lot of functionality currently missing from Nagato. I will remedy this over time. There is no official roadmap per se but I plan to add the following capabilities to Nagato:
 
-* introduce tools (e.g. surfing the web)
-* implement function calling (complement to adding tools)
-* cache results from function calling
-* implement short/long-term memory for agents
-* implement self-reflection and re-planning for agents
-* support for other LLMs beyond OpenAI's and Anthropic's
-* LLMOps instrumentation
+* ✅ implement function calling (complement to adding tools)
+* 🎯 introduce tools (e.g. surfing the web)
+* 🎯cache results from function calling
+* 🎯 implement short/long-term memory for agents
+* 🎯 implement self-reflection and re-planning for agents
+* 🎯 support for other LLMs beyond OpenAI's and Anthropic's
+* 🎯 LLMOps instrumentation
 
 # How can you support
 

@@ -95,7 +95,7 @@ RESEARCHER_SYSTEM_PROMPT = """You are an AI Agent with advanced research capabil
 When given a research question or topic, you use your advanced research abilities to gather relevant information, analyze data, and provide detailed insights.
 """
 
-RESEARCHER_TASK_PROMPT = """Execute the following task using the appropriate tools at your disposal. Provide a detailed result based on your research findings.
+RESEARCHER_TASK_PROMPT_WITH_EXAMPLE = """Execute the following task using the appropriate tools at your disposal. Provide a detailed result based on your research findings.
 ---
 For an example task in this format:
 <task>
@@ -129,6 +129,46 @@ I expect a result in the following format:
 ---
 
 For the task below:
+<task>
+    <goal>{goal}</goal>
+    <description>{description}</description>
+</task>
+
+Please provide a detailed result inside <task_result> tags. Ensure to output correctly formed XML tags (e.g. opening <task_result> and closing </task_result> tags).
+"""
+
+
+RESEARCHER_TASK_PROMPT_NO_EXAMPLE = """Execute the following task using the appropriate tools at your disposal. Provide a detailed result based on your execution.
+
+For the task below:
+<task>
+    <goal>{goal}</goal>
+    <description>{description}</description>
+</task>
+
+Please provide a detailed result inside <task_result> tags.
+"""
+
+
+RESEARCHER_TASK_PROMPT_WITH_PREVIOUS_UNSATISFACTORY_TASK_RESULT = """The task below has already been executed, however the result was deemed unsatisfactory by the reviewer agent. The reviewer agent provided details of its review inside the <task_evaluation> tags below:
+
+<task_evaluation>
+    <goal>{goal}</goal>
+    <outcome>{outcome}</outcome>
+    <evaluation>{evaluation}</evaluation>
+</task_evaluation>
+
+The possible values inside the <outcome> tag are:
+- MEETS_REQUIREMENT: the reslt meets the requirements of the task.
+- PARTIALLY_MEETS_REQUIREMENT: the result partially meets the requirements of the task. Some aspects are missing or incomplete.
+- DOES_NOT_MEET_REQUIREMENT: the result does not meet the requirements of the task. The result is inaccurate or incomplete.
+- OTHER: for any other evaluation that does not fit the above categories. Provide a detailed explanation in the <evaluation> tag.
+
+The outcome of your task is {outcome}. Additionally, the reviewer provided detailed feedback on why it did not meet the requirements inside the <evaluation> tags.
+
+Therefore, your task is to address the issues raised by the reviewer agent and provide a revised result.
+
+Execute the task below while taking into account the feedback provided by the reviewer agent.
 <task>
     <goal>{goal}</goal>
     <description>{description}</description>
@@ -322,7 +362,7 @@ For the task and result below:
     <result>{result}</result>
 </task_result>
 
-Please provide an evaluation of the result in the format described above.
+Please provide an evaluation of the result in the format described above. Ensure to output correctly formed XML tags (e.g. opening <task_evaluation> and closing </task_evaluation> tags).
 """
 
 MARKDOWN_AGENT_SYSTEM_PROMPT = """You are an AI Agent with advanced markdown capabilities.
