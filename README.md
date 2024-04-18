@@ -209,10 +209,11 @@ Nagato is still in its very early development phase. This means that I am likely
 Moreover, there is a lot of functionality currently missing from Nagato. I will remedy this over time. There is no official roadmap per se but I plan to add the following capabilities to Nagato:
 
 * ✅ implement function calling (complement to adding tools)
-* 🎯 introduce tools (e.g. surfing the web)
-* 🎯cache results from function calling
-* 🎯 implement short/long-term memory for agents
+* ✅ introduce basic tools (e.g. surfing the web)
+* 🎯 cache results from function calling
+* 🎯 implement short/long-term memory for agents (with RAG and memory synthesis)
 * 🎯 implement self-reflection and re-planning for agents
+* 🎯 implement additional modalities (e.g. image, sound, etc.)
 * 🎯 support for other LLMs beyond OpenAI's and Anthropic's
 * 🎯 LLMOps instrumentation
 
