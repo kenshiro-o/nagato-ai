@@ -138,7 +138,7 @@ class OpenAIAgent(Agent):
                 }
             )
 
-            final_tool_result_content += f"{tool_result_json} ----- \n"
+            final_tool_result_content += f"{tool_result_json}\n"
 
         response = self.client.chat.completions.create(
             model=self.model,
