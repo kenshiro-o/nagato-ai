@@ -36,6 +36,14 @@ Assuming your program's entrypoint is defined in a file called `main.py`, you ca
 poetry run python main.py
 ```
 
+
+## LLMs supported
+
+Nagato currently supports the following LLMs
+* Claude 3 (Anthropic)
+* GPT-3 to GPT-4 (OpenAI)
+* Groq (which gives you access to Llama 3) 🔥
+
 ## Examples of AI Agent configuration
 
 Nagato is built with flexibility at its core, so you could program it using your paradigm of choice. However these are some of the ways I've seen people use Nagato so far.
