@@ -67,6 +67,8 @@ openai_client = OpenAI(
 anthropic_api_key = "<api-key>"
 anthropic_client = Anthropic(api_key=anthropic_api_key)
 
+groq_client = Groq(api_key="<api-key>")
+
 coordinator_agent: Agent = AnthropicAgent(
     anthropic_client,
     "claude-3-opus-20240229",
@@ -75,22 +77,21 @@ coordinator_agent: Agent = AnthropicAgent(
     "Coordinator Agent",
 )
 
-researcher_agent: Agent = AnthropicAgent(
-    anthropic_client,
-    "claude-3-sonnet-20240229",
+researcher_agent: Agent = OpenAIAgent(
+    openai_client,
+    "gpt-4-turbo-2024-04-09",
     "Researcher",
     RESEARCHER_SYSTEM_PROMPT,
     "Researcher Agent",
 )
 
-critic_agent: Agent = AnthropicAgent(
-    anthropic_client,
-    "claude-3-opus-20240229",
+critic_agent: Agent = GroqAgent(
+    groq_client,
+    "llama3-70b-8192",
     "Critic",
     CRITIC_SYSTEM_PROMPT,
     "Critic Agent",
 )
-
 ...
 ```
 
@@ -111,11 +112,6 @@ task_list: List[Task] = [
         goal="Perform sentiment analysis on the tweets",
         description="Feed the tweets to the AI Agent to analyze sentiment per overall sentiment acoss tweets. Range of values for sentiment can be: Positive, Negative, or Neutral"
     )]
-
-openai_client = OpenAI(
-    organization="<org-id>",
-    api_key="<api-key>",
-)
 
 anthropic_api_key = "<api-key>"
 anthropic_client = Anthropic(api_key=anthropic_api_key)
@@ -154,7 +150,7 @@ for task in task_list:
 ## Tool calling
 
 Check the full example [here](docs/examples/coordinator_researcher_critic.py) to see how tool calling works.
-We now support tool calling for both Claude 3 and GPT models.
+We now support tool calling for  GPT, Claude 3, and Llama 3 (via Groq) models.
 
 
 ### Tool creation
@@ -218,11 +214,12 @@ Moreover, there is a lot of functionality currently missing from Nagato. I will 
 
 * ✅ implement function calling (complement to adding tools)
 * ✅ introduce basic tools (e.g. surfing the web)
+* ✅ Support for Llama 3 (via Groq)
 * 🎯 cache results from function calling
 * 🎯 implement short/long-term memory for agents (with RAG and memory synthesis)
 * 🎯 implement self-reflection and re-planning for agents
 * 🎯 implement additional modalities (e.g. image, sound, etc.)
-* 🎯 support for other LLMs beyond OpenAI's and Anthropic's
+* 🎯 Support for local LLMs (e.g. via Ollama)
 * 🎯 LLMOps instrumentation
 
 # How can you support
