@@ -1,11 +1,12 @@
 import os
 import re
-from typing import List, Union
+from typing import List, Optional, Type
 from time import sleep
 from enum import Enum
 from datetime import datetime, timezone
 
 from openai import OpenAI
+from groq import Groq
 from anthropic import Anthropic
 from rich.console import Console
 from rich.panel import Panel
@@ -15,6 +16,7 @@ from dotenv import load_dotenv
 
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.agent.openai import OpenAIAgent
+from nagatoai_core.agent.groq import GroqAgent
 from nagatoai_core.agent.anthropic import AnthropicAgent
 from nagatoai_core.agent.message import Exchange, Message, Sender, ToolResult
 from nagatoai_core.mission.mission import Mission, MissionStatus
@@ -30,13 +32,19 @@ from nagatoai_core.tool.lib.readwise.book_highlights_lister import (
 from nagatoai_core.tool.lib.human.confirm import (
     HumanConfirmInputTool,
 )
+from nagatoai_core.tool.lib.human.input import HumanInputTool
+from nagatoai_core.tool.lib.web.page_scraper import WebPageScraperTool
+from nagatoai_core.tool.lib.filesystem.text_file_reader import TextFileReaderTool
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 from nagatoai_core.tool.provider.anthropic import AnthropicToolProvider
+from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 from nagatoai_core.prompt.templates import (
     OBJECTIVE_PROMPT,
     COORDINATOR_SYSTEM_PROMPT,
     RESEARCHER_SYSTEM_PROMPT,
     RESEARCHER_TASK_PROMPT_WITH_EXAMPLE,
+    RESEARCHER_TASK_PROMPT_NO_EXAMPLE,
+    RESEARCHER_TASK_PROMPT_WITH_PREVIOUS_UNSATISFACTORY_TASK_RESULT,
     CRITIC_SYSTEM_PROMPT,
     CRITIC_PROMPT,
 )
@@ -75,7 +83,7 @@ def print_exchange(console: Console, agent: Agent, exchange: Exchange, color: st
     console.print(
         Panel(
             exchange.user_msg.content,
-            title=f"{agent.name} Prompt",
+            title=f"<{agent.model}> {agent.name} Prompt",
             title_align="left",
             border_style=color,
         )
@@ -86,7 +94,7 @@ def print_exchange(console: Console, agent: Agent, exchange: Exchange, color: st
             console.print(
                 Panel(
                     str(tool_result.result),
-                    title=f"{agent.name} Tool Result",
+                    title=f"<{agent.model}> {agent.name} Tool Result",
                     title_align="left",
                     border_style=color,
                 )
@@ -95,7 +103,7 @@ def print_exchange(console: Console, agent: Agent, exchange: Exchange, color: st
         console.print(
             Panel(
                 exchange.agent_response.content,
-                title=f"{agent.name} Response",
+                title=f"<{agent.model}> {agent.name} Response",
                 title_align="left",
                 border_style=color,
             )
@@ -103,7 +111,12 @@ def print_exchange(console: Console, agent: Agent, exchange: Exchange, color: st
 
 
 def process_task(
-    task: Task, worker_agent: Agent, tool_registry: ToolRegistry, console: Console
+    task: Task,
+    task_result: Optional[TaskResult],
+    worker_agent: Agent,
+    tool_registry: ToolRegistry,
+    tool_provider: Type[AbstractToolProvider],
+    console: Console,
 ) -> List[Exchange]:
     """
     Processes a task by sending it to the researcher and the critic.
@@ -114,23 +127,37 @@ def process_task(
     all_available_tools: List[AbstractToolProvider] = []
     for tool in all_tools:
         t = tool()
-        print(f"*** Tool- Name:{t.name} | Description: {t.description}")
-        at = AnthropicToolProvider(
+        at = tool_provider(
             tool=t, name=t.name, description=t.description, args_schema=t.args_schema
         )
-        schema = at.schema()
-        print(f"*** Tool Schema: {schema}")
         all_available_tools.append(at)
-
+    # print(f"*** All Available Tools: {all_available_tools}")
     exchanges: List[Exchange] = []
 
     # Send the task to the researcher
-    # TODO - We only need to send the examples in the first prompt to the agent (i.e. it has empty history).
-    #        If the agent has already seen the examples, we can skip sending them again.
-    #        This would require us to use a slightly different prompt template for the researcher agent
-    task_prompt = RESEARCHER_TASK_PROMPT_WITH_EXAMPLE.format(
-        goal=task.goal, description=task.description
-    )
+    # We only need to send the examples in the first prompt to the agent (i.e. it has empty history).
+    #  - If the agent has already seen the examples, we can skip sending them again.
+    task_prompt = ""
+
+    if task_result and task_result.outcome != TaskOutcome.MEETS_REQUIREMENT:
+        task_prompt = (
+            RESEARCHER_TASK_PROMPT_WITH_PREVIOUS_UNSATISFACTORY_TASK_RESULT.format(
+                goal=task.goal,
+                outcome=task_result.outcome,
+                evaluation=task_result.evaluation,
+                description=task.description,
+            )
+        )
+    else:
+        if len(worker_agent.history) > 0:
+            task_prompt = RESEARCHER_TASK_PROMPT_NO_EXAMPLE.format(
+                goal=task.goal, description=task.description
+            )
+        else:
+            task_prompt = RESEARCHER_TASK_PROMPT_WITH_EXAMPLE.format(
+                goal=task.goal, description=task.description
+            )
+
     worker_exchange = send_agent_request(
         worker_agent, task_prompt, all_available_tools, 0.6, 2000
     )
@@ -140,20 +167,20 @@ def process_task(
 
     while True:
         if not worker_exchange.agent_response.tool_calls:
-            print("*** No tool calls to process for task ** breaking out of loop ***")
+            # print("*** No tool calls to process for task ** breaking out of loop ***")
             break
 
         for tool_call in worker_exchange.agent_response.tool_calls:
-            print(
-                f"*** Agent to call tool: {tool_call.name} with parameters: {tool_call.parameters}"
-            )
+            # print(
+            #     f"*** Agent to call tool: {tool_call.name} with parameters: {tool_call.parameters}"
+            # )
             tool = tool_registry.get_tool(tool_call.name)
             tool_instance = tool()
             tool_params_schema = tool_instance.args_schema
             tool_params = tool_params_schema(**tool_call.parameters)
 
             tool_output = tool_instance._run(tool_params)
-            print(f"*** Tool Output: {tool_output}")
+            # print(f"*** Tool Output: {tool_output}")
 
             tool_result = ToolResult(
                 id=tool_call.id, name=tool_call.name, result=tool_output, error=None
@@ -164,14 +191,17 @@ def process_task(
             )
             exchanges.append(tool_result_exchange)
 
-            print(
-                f"*** Assistant from Tool Call reply: {tool_result_exchange.agent_response}"
-            )
+            # print(
+            #     f"*** Assistant from Tool Call reply: {tool_result_exchange.agent_response}"
+            # )
             print_exchange(console, worker_agent, tool_result_exchange, "orange_red1")
 
         worker_exchange = exchanges[-1]
 
     return exchanges
+
+
+# def process_tasks()
 
 
 def main():
@@ -191,6 +221,8 @@ def main():
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
     anthropic_client = Anthropic(api_key=anthropic_api_key)
 
+    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
     # coordinator_agent: Agent = OpenAIAgent(
     #     openai_client,
     #     "gpt-4-turbo-preview",
@@ -198,6 +230,7 @@ def main():
     #     COORDINATOR_SYSTEM_PROMPT,
     #     "Coordinator Agent",
     # )
+
     coordinator_agent: Agent = AnthropicAgent(
         anthropic_client,
         "claude-3-opus-20240229",
@@ -206,25 +239,65 @@ def main():
         "Coordinator Agent",
     )
 
-    researcher_agent: Agent = AnthropicAgent(
-        anthropic_client,
-        "claude-3-sonnet-20240229",
-        "Researcher",
-        RESEARCHER_SYSTEM_PROMPT,
-        "Researcher Agent",
-    )
-
-    # researcher_agent: Agent = OpenAIAgent(
-    #     openai_client,
-    #     "gpt-4-turbo-preview",
+    # researcher_agent: Agent = AnthropicAgent(
+    #     anthropic_client,
+    #     "claude-3-sonnet-20240229",
     #     "Researcher",
     #     RESEARCHER_SYSTEM_PROMPT,
     #     "Researcher Agent",
     # )
 
+    # researcher_agent: Agent = GroqAgent(
+    #     groq_client,
+    #     "llama3-70b-8192",
+    #     "Researcher",
+    #     RESEARCHER_SYSTEM_PROMPT,
+    #     "Researcher Agent",
+    # )
+
+    # researcher_agent: Agent = AnthropicAgent(
+    #     anthropic_client,
+    #     "claude-3-opus-20240229",
+    #     "Researcher",
+    #     RESEARCHER_SYSTEM_PROMPT,
+    #     "Researcher Agent",
+    # )
+
+    researcher_agent: Agent = OpenAIAgent(
+        openai_client,
+        "gpt-4-turbo-2024-04-09",
+        "Researcher",
+        RESEARCHER_SYSTEM_PROMPT,
+        "Researcher Agent",
+    )
+
+    # critic_agent: Agent = AnthropicAgent(
+    #     anthropic_client,
+    #     "claude-3-opus-20240229",
+    #     "Critic",
+    #     CRITIC_SYSTEM_PROMPT,
+    #     "Critic Agent",
+    # )
+
+    # critic_agent: Agent = AnthropicAgent(
+    #     anthropic_client,
+    #     "claude-3-sonnet-20240229",
+    #     "Critic",
+    #     CRITIC_SYSTEM_PROMPT,
+    #     "Critic Agent",
+    # )
+
+    # critic_agent: Agent = GroqAgent(
+    #     groq_client,
+    #     "llama3-70b-8192",
+    #     "Critic",
+    #     CRITIC_SYSTEM_PROMPT,
+    #     "Critic Agent",
+    # )
+
     critic_agent: Agent = AnthropicAgent(
         anthropic_client,
-        "claude-3-opus-20240229",
+        "claude-3-haiku-20240307",
         "Critic",
         CRITIC_SYSTEM_PROMPT,
         "Critic Agent",
@@ -232,7 +305,7 @@ def main():
 
     # critic_agent: Agent = OpenAIAgent(
     #     openai_client,
-    #     "gpt-4-turbo-preview",
+    #     "gpt-4-turbo-2024-04-09",
     #     "Critic",
     #     CRITIC_SYSTEM_PROMPT,
     #     "Critic Agent",
@@ -242,6 +315,9 @@ def main():
     tool_registry.register_tool(ReadwiseDocumentFinderTool)
     tool_registry.register_tool(ReadwiseBookHighlightsListerTool)
     tool_registry.register_tool(HumanConfirmInputTool)
+    tool_registry.register_tool(HumanInputTool)
+    tool_registry.register_tool(WebPageScraperTool)
+    tool_registry.register_tool(TextFileReaderTool)
 
     tools_available_str = ""
     for tool in tool_registry.get_all_tools():
@@ -289,50 +365,80 @@ def main():
     sleep(3)
 
     for task in mission.tasks:
-        task.start_time = datetime.now(timezone.utc)
-        exchanges = process_task(task, researcher_agent, tool_registry, console)
-        task.end_time = datetime.now(timezone.utc)
+        task_pass = False
+        task_retry_count = 0
+        task_result: Optional[TaskResult] = None
 
-        # Construct critic prompt input containing all answers from exchanges of the current task
-        for i, exchange in enumerate(exchanges):
-            # last_exchange = exchanges[-1]
-            task_result_str = exchange.agent_response.content
-            if exchange.user_msg.tool_results:
-                print(f"*** [{i}] Exchange has tool results ***")
-                task_result_str = str(exchange.user_msg.tool_results[-1].result)
-                task_result_str += "\n\n---\n" + exchange.agent_response.content
+        while not task_pass:
+            task.start_time = datetime.now(timezone.utc)
+            exchanges = process_task(
+                task,
+                task_result,
+                researcher_agent,
+                tool_registry,
+                OpenAIToolProvider,
+                # AnthropicToolProvider,
+                console,
+            )
+            task.end_time = datetime.now(timezone.utc)
+
+            task_result_str = ""
+            # Construct critic prompt input containing all answers from exchanges of the current task
+            for i, exchange in enumerate(exchanges):
+                if exchange.user_msg.tool_results:
+                    print(f"*** [{i}] Exchange has tool results ***")
+                    task_result_str += (
+                        "\n" + str(exchange.user_msg.tool_results[-1].result) + "\n\n"
+                    )
+                    task_result_str += (
+                        "\n\n---\n" + exchange.agent_response.content + "\n\n"
+                    )
+                else:
+                    print(f"*** [{i}] Exchange has no tool calls ***")
+                    soup = BeautifulSoup(exchange.agent_response.content, "html.parser")
+                    result_tag = soup.find("result")
+                    if result_tag:
+                        result_value = result_tag.get_text(strip=True)
+                        # Skip if result is empty
+                        if result_value:
+                            task_result_str += (
+                                "\n" + result_tag.get_text(strip=True) + "\n\n"
+                            )
+
+            sleep(3)
+
+            # Critic agent can now be invoked
+            critic_prompt = CRITIC_PROMPT.format(
+                goal=task.goal, description=task.description, result=task_result_str
+            )
+            critic_exchange = send_agent_request(
+                critic_agent, critic_prompt, [], 0.6, 2000
+            )
+            print_exchange(console, critic_agent, critic_exchange, "red")
+
+            critic_soup = BeautifulSoup(
+                critic_exchange.agent_response.content, "html.parser"
+            )
+            outcome = critic_soup.find("outcome").get_text(strip=True)
+            evaluation = critic_soup.find("evaluation").get_text(strip=True)
+
+            outcome_enum = TaskOutcome.from_str(outcome)
+            task_result = TaskResult(
+                result=task_result_str, evaluation=evaluation, outcome=outcome_enum
+            )
+
+            task.update(task_result)
+            sleep(3)
+
+            if task.result.outcome == TaskOutcome.MEETS_REQUIREMENT:
+                task_pass = True
+                print(f"✅ Task {task} has passed")
             else:
-                print(f"*** [{i}] Exchange has no tool calls ***")
-                soup = BeautifulSoup(exchange.agent_response.content, "html.parser")
-                result_tag = soup.find("result")
-                if result_tag:
-                    result_value = result_tag.get_text(strip=True)
-                    # Skip if result is empty
-                    if result_value:
-                        task_result_str = result_tag.get_text(strip=True)
-
-        sleep(3)
-
-        # Critic agent can now be invoked
-        critic_prompt = CRITIC_PROMPT.format(
-            goal=task.goal, description=task.description, result=task_result_str
-        )
-        critic_exchange = send_agent_request(critic_agent, critic_prompt, [], 0.6, 2000)
-        print_exchange(console, critic_agent, critic_exchange, "red")
-
-        critic_soup = BeautifulSoup(
-            critic_exchange.agent_response.content, "html.parser"
-        )
-        outcome = critic_soup.find("outcome").get_text(strip=True)
-        evaluation = critic_soup.find("evaluation").get_text(strip=True)
-
-        outcome_enum = TaskOutcome.from_str(outcome)
-        task_result = TaskResult(
-            result=task_result_str, evaluation=evaluation, outcome=outcome_enum
-        )
-
-        task.update(task_result)
-        sleep(3)
+                task_retry_count += 1
+                if task_retry_count >= 3:
+                    print(f"Task {task} has been retried more than 3 times. Exiting...")
+                    break
+                print(f"❌ Task {task} has failed. Retrying...")
 
     markdown_output_str = f"# {mission.objective}\n\n"
     markdown_output_str += f"## Problem Statement\n\n{mission.problem_statement}\n\n"
@@ -352,7 +458,9 @@ def main():
     # print_exchange(console, markdown_output_agent, markdown_exchange, "green3")
 
     # Sanitize/escape the objective string so that we can turn it into a file name
-    objective_file_name = re.sub(r"[^a-zA-Z0-9]+", "_", objective) + ".md"
+    objective_file_name = re.sub(r"[^a-zA-Z0-9]+", "_", objective)
+    # Make sure the fle name is not longer than 25 characters
+    objective_file_name = objective_file_name[:25] + ".md"
 
     if not os.path.exists("./outputs"):
         os.makedirs("./outputs")
