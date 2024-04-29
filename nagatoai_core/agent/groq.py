@@ -6,7 +6,9 @@ from openai.types.chat import ChatCompletion
 
 from .agent import Agent
 from .message import Sender, Message, Exchange, ToolResult, ToolCall
-from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
+from nagatoai_core.tool.provider.openai import (
+    OpenAIToolProvider,
+)  # Groq tool calling mechanism is similar to OpenAI's
 
 
 def extract_groq_model_family(model: str) -> str:
@@ -56,7 +58,7 @@ class GroqAgent(Agent):
     def chat(
         self,
         prompt: str,
-        tools: List[AbstractToolProvider],
+        tools: List[OpenAIToolProvider],
         temperature: float,
         max_tokens: int,
     ) -> Exchange:
@@ -76,18 +78,45 @@ class GroqAgent(Agent):
         }
         messages = previous_messages + [current_message]
 
-        response: Optional[ChatCompletion] = self.client.chat.completions.create(
-            messages=messages,
-            model=self.model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        response: Optional[ChatCompletion] = None
+        if len(tools) > 0:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                tools=[tool.schema() for tool in tools],
+                tool_choice="auto",
+            )
+        else:
+            response = self.client.chat.completions.create(
+                messages=messages,
+                model=self.model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
 
         response_text = response.choices[0].message.content
+        tool_calls: List[ToolCall] = []
+
+        if response.choices[0].message.tool_calls:
+            response_text = response_text + "\n\n" if response_text else ""
+            for tool_call in response.choices[0].message.tool_calls:
+                params_json = json.loads(tool_call.function.arguments)
+                tool_calls.append(
+                    ToolCall(
+                        id=tool_call.id,
+                        name=tool_call.function.name,
+                        parameters=params_json,
+                    )
+                )
+                response_text += f"Tool call requested: {tool_call.function.name} with parameters: {params_json}\n"
 
         exchange = Exchange(
             user_msg=Message(sender=Sender.USER, content=prompt),
-            agent_response=Message(sender=Sender.AGENT, content=response_text),
+            agent_response=Message(
+                sender=Sender.AGENT, content=response_text, tool_calls=tool_calls
+            ),
         )
         self.exchange_history.append(exchange)
 
@@ -103,10 +132,52 @@ class GroqAgent(Agent):
         :param max_tokens: The maximum number of tokens to generate.
         :return: Exchange object containing the user message and the agent response.
         """
-        # TODO - to implement
-        return None
+        messages = self._build_chat_history()
+
+        final_tool_result_content = ""
+        for tool_result in tool_results:
+            tool_result_json = json.dumps(tool_result.result, indent=2)
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_result.id,
+                    "name": tool_result.name,
+                    "content": tool_result_json,
+                }
+            )
+
+            final_tool_result_content += f"{tool_result_json}\n"
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+        response_text = response.choices[0].message.content
+
+        exchange = Exchange(
+            user_msg=Message(
+                sender=Sender.TOOL_RESULT,
+                content=final_tool_result_content,
+                tool_results=tool_results,
+            ),
+            agent_response=Message(
+                sender=Sender.AGENT,
+                content=response_text,
+            ),
+        )
+
+        self.exchange_history.append(exchange)
+
+        return exchange
 
     def _build_chat_history(self) -> List:
+        """
+        Builds the chat history for the agent.
+        :return: List of chat messages, which may include tool calls and tool results.
+        """
         system_message = {
             "role": "system",
             "content": self.role_description,
@@ -115,15 +186,57 @@ class GroqAgent(Agent):
         messages = [system_message]
 
         for exchange in self.exchange_history:
-            user_message = {
-                "role": "user",
-                "content": exchange.user_msg.content,
-            }
-            assistant_message = {
-                "role": "assistant",
-                "content": exchange.agent_response.content,
-            }
-            messages.extend([user_message, assistant_message])
+            user_content = []
+            if exchange.user_msg.tool_results:
+                for tool_result in exchange.user_msg.tool_results:
+                    user_content.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_result.id,
+                            "name": tool_result.name,
+                            "content": str(tool_result.result),
+                        }
+                    )
+            if exchange.user_msg.content:
+                user_content.append(
+                    {
+                        "role": "user",
+                        "content": exchange.user_msg.content,
+                    }
+                )
+
+            messages.extend(user_content)
+
+            assistant_content = []
+            if exchange.agent_response.tool_calls:
+                tool_calls_list = []
+                for tool_call in exchange.agent_response.tool_calls:
+                    tool_calls_list.append(
+                        {
+                            "id": tool_call.id,
+                            "function": {
+                                "name": tool_call.name,
+                                "arguments": json.dumps(tool_call.parameters),
+                            },
+                            "type": "function",
+                        }
+                    )
+
+                assistant_content.append(
+                    {
+                        "role": "assistant",
+                        "tool_calls": tool_calls_list,
+                    }
+                )
+            elif exchange.agent_response.content:
+                assistant_content.append(
+                    {
+                        "role": "assistant",
+                        "content": exchange.agent_response.content,
+                    }
+                )
+
+            messages.extend(assistant_content)
 
         return messages
 
