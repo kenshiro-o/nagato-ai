@@ -5,9 +5,6 @@ from time import sleep
 from enum import Enum
 from datetime import datetime, timezone
 
-from openai import OpenAI
-from groq import Groq
-from anthropic import Anthropic
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn
@@ -15,9 +12,7 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 from nagatoai_core.agent.agent import Agent
-from nagatoai_core.agent.openai import OpenAIAgent
-from nagatoai_core.agent.groq import GroqAgent
-from nagatoai_core.agent.anthropic import AnthropicAgent
+from nagatoai_core.agent.factory import create_agent
 from nagatoai_core.agent.message import Exchange, Message, Sender, ToolResult
 from nagatoai_core.mission.mission import Mission, MissionStatus
 from nagatoai_core.mission.task import Task, TaskStatus, TaskOutcome, TaskResult
@@ -213,15 +208,7 @@ def main():
     # For pretty console logs
     console = Console()
 
-    openai_client = OpenAI(
-        organization=os.getenv("OPENAI_ORG_ID"),
-        api_key=os.getenv("OPENAI_API_KEY"),
-    )
-
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-    anthropic_client = Anthropic(api_key=anthropic_api_key)
-
-    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
     # coordinator_agent: Agent = OpenAIAgent(
     #     openai_client,
@@ -231,8 +218,8 @@ def main():
     #     "Coordinator Agent",
     # )
 
-    coordinator_agent: Agent = AnthropicAgent(
-        anthropic_client,
+    coordinator_agent: Agent = create_agent(
+        anthropic_api_key,
         "claude-3-opus-20240229",
         "Coordinator",
         COORDINATOR_SYSTEM_PROMPT,
@@ -263,9 +250,17 @@ def main():
     #     "Researcher Agent",
     # )
 
-    researcher_agent: Agent = OpenAIAgent(
-        openai_client,
-        "gpt-4-turbo-2024-04-09",
+    # researcher_agent: Agent = OpenAIAgent(
+    #     openai_client,
+    #     "gpt-4-turbo-2024-04-09",
+    #     "Researcher",
+    #     RESEARCHER_SYSTEM_PROMPT,
+    #     "Researcher Agent",
+    # )
+
+    researcher_agent = create_agent(
+        anthropic_api_key,
+        "claude-3-sonnet-20240229",
         "Researcher",
         RESEARCHER_SYSTEM_PROMPT,
         "Researcher Agent",
@@ -295,8 +290,16 @@ def main():
     #     "Critic Agent",
     # )
 
-    critic_agent: Agent = AnthropicAgent(
-        anthropic_client,
+    # critic_agent: Agent = AnthropicAgent(
+    #     anthropic_client,
+    #     "claude-3-haiku-20240307",
+    #     "Critic",
+    #     CRITIC_SYSTEM_PROMPT,
+    #     "Critic Agent",
+    # )
+
+    critic_agent = create_agent(
+        anthropic_api_key,
         "claude-3-haiku-20240307",
         "Critic",
         CRITIC_SYSTEM_PROMPT,
@@ -376,8 +379,8 @@ def main():
                 task_result,
                 researcher_agent,
                 tool_registry,
-                OpenAIToolProvider,
-                # AnthropicToolProvider,
+                # OpenAIToolProvider,
+                AnthropicToolProvider,
                 console,
             )
             task.end_time = datetime.now(timezone.utc)
