@@ -48,6 +48,14 @@ Nagato currently supports the following LLMs
 
 Nagato is built with flexibility at its core, so you could program it using your paradigm of choice. However these are some of the ways I've seen people use Nagato so far.
 
+By default Nagato expects all LLM API keys to be set as environment variables. Nagato may load the keys from the following variables:
+
+```
+OPENAI_API_KEY=<api-key>
+ANTHROPIC_API_KEY=<api-key>
+READWISE_API_KEY=<api-key>
+```
+
 ### Coordinator, worker, and critic agents
 
 In this configuration we have the following:
@@ -59,35 +67,25 @@ In this configuration we have the following:
 Example setup for this configuration could look like this:
 
 ```python
-openai_client = OpenAI(
-    organization="<org-id>",
-    api_key="<api-key>",
-)
-
-anthropic_api_key = "<api-key>"
-anthropic_client = Anthropic(api_key=anthropic_api_key)
-
-groq_client = Groq(api_key="<api-key>")
-
-coordinator_agent: Agent = AnthropicAgent(
-    anthropic_client,
+coordinator_agent: Agent = create_agent(
+    anthropic_api_key,
     "claude-3-opus-20240229",
     "Coordinator",
     COORDINATOR_SYSTEM_PROMPT,
     "Coordinator Agent",
 )
 
-researcher_agent: Agent = OpenAIAgent(
-    openai_client,
+researcher_agent = create_agent(
+    anthropic_api_key,
     "gpt-4-turbo-2024-04-09",
     "Researcher",
     RESEARCHER_SYSTEM_PROMPT,
     "Researcher Agent",
 )
 
-critic_agent: Agent = GroqAgent(
-    groq_client,
-    "llama3-70b-8192",
+critic_agent = create_agent(
+    anthropic_api_key,
+    "claude-3-haiku-20240307",
     "Critic",
     CRITIC_SYSTEM_PROMPT,
     "Critic Agent",
@@ -113,20 +111,17 @@ task_list: List[Task] = [
         description="Feed the tweets to the AI Agent to analyze sentiment per overall sentiment acoss tweets. Range of values for sentiment can be: Positive, Negative, or Neutral"
     )]
 
-anthropic_api_key = "<api-key>"
-anthropic_client = Anthropic(api_key=anthropic_api_key)
-
-researcher_agent: Agent = AnthropicAgent(
-    anthropic_client,
+coordinator_agent: Agent = create_agent(
+    anthropic_api_key,
     "claude-3-sonnet-20240229",
-    "Researcher",
-    RESEARCHER_SYSTEM_PROMPT,
-    "Researcher Agent",
+    "Coordinator",
+    COORDINATOR_SYSTEM_PROMPT,
+    "Coordinator Agent",
 )
 
-critic_agent: Agent = AnthropicAgent(
-    anthropic_client,
-    "claude-3-opus-20240229",
+critic_agent = create_agent(
+    anthropic_api_key,
+    "claude-3-haiku-20240307",
     "Critic",
     CRITIC_SYSTEM_PROMPT,
     "Critic Agent",
