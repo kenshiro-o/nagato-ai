@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Union, Optional
 from datetime import datetime
+import uuid
 
 from pydantic import BaseModel
 
@@ -38,7 +39,7 @@ class TaskResult(BaseModel):
 
     result: str
     evaluation: str
-    outcome: TaskOutcome = TaskOutcome.MEETS_REQUIREMENT
+    outcome: Optional[TaskOutcome] = None
 
     def __str__(self):
         return f"Result={self.result} | Evaluation={self.evaluation} | Outcome={self.outcome}"
@@ -49,12 +50,20 @@ class Task(BaseModel):
     Task represents a task that an agent must complete
     """
 
+    id: str
     goal: str
     description: str
     result: Union[TaskResult, None] = None
     status: TaskStatus = TaskStatus.PENDING
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+
+    def __init__(self, **data):
+        # create the id if it does not exist
+        if "id" not in data:
+            data["id"] = str(uuid.uuid4())
+
+        super().__init__(**data)
 
     def update(self, result: TaskResult):
         """
