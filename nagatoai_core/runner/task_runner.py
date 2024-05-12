@@ -10,6 +10,7 @@ from nagatoai_core.tool.registry import ToolRegistry
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.runner.task_evaluator import TaskEvaluator
+from nagatoai_core.memory.tool_run_cache import ToolRunCache
 
 
 class TaskRunner(BaseModel, ABC):
@@ -26,6 +27,7 @@ class TaskRunner(BaseModel, ABC):
     tool_registry: ToolRegistry
     agent_tool_providers: Dict[str, Type[AbstractToolProvider]]
     task_evaluator: TaskEvaluator
+    tool_cache: ToolRunCache = ToolRunCache()
 
     @abstractmethod
     def run(self) -> List[Exchange]:
