@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from rich.console import Console
 
 from nagatoai_core.runner.task_runner import TaskRunner
-from nagatoai_core.agent.message import Exchange, ToolResult
+from nagatoai_core.agent.message import Exchange, ToolResult, ToolRun
 from nagatoai_core.mission.task import TaskResult, TaskOutcome
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 from nagatoai_core.prompt.templates import (
@@ -100,17 +100,36 @@ class SingleAgentTaskRunner(TaskRunner):
                 tool_params_schema = tool_instance.args_schema
                 tool_params = tool_params_schema(**tool_call.parameters)
 
-                tool_output = tool_instance._run(tool_params)
+                tool_run = self.tool_cache.get_tool_run(
+                    tool_call.name, tool_call.parameters
+                )
+
+                # Make sure that the tool run result is not an error or Exception
+                if tool_run and not isinstance(tool_run.result.result, BaseException):
+                    tool_output = tool_run.result.result
+                    print(
+                        f"**** Using tool run result from cache [tool-call={tool_run.call.name}, params={tool_run.call.parameters} ****"
+                    )
+                else:
+                    tool_output = tool_instance._run(tool_params)
+                    print(
+                        f"**** Tool run result not in cache. Running tool... [tool-call={tool_call.name}, params={tool_call.parameters} ****"
+                    )
+
                 # print(f"*** Tool Output: {tool_output}")
 
                 tool_result = ToolResult(
                     id=tool_call.id, name=tool_call.name, result=tool_output, error=None
                 )
 
+                tool_run = ToolRun(id=tool_call.id, call=tool_call, result=tool_result)
+
                 tool_result_exchange = agent.send_tool_run_results(
                     [tool_result], 0.6, 2000
                 )
                 exchanges.append(tool_result_exchange)
+
+                self.tool_cache.add_tool_run(tool_run)
 
                 # print(
                 #     f"*** Assistant from Tool Call reply: {tool_result_exchange.agent_response}"

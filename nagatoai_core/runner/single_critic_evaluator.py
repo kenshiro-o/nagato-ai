@@ -1,10 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Type
-
-from pydantic import BaseModel
-from rich.progress import Progress, SpinnerColumn
 from rich.console import Console
-from rich.panel import Panel
 from bs4 import BeautifulSoup
 
 
@@ -13,13 +9,6 @@ from nagatoai_core.agent.message import Exchange
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.runner.task_evaluator import TaskEvaluator
 from nagatoai_core.prompt.templates import (
-    OBJECTIVE_PROMPT,
-    COORDINATOR_SYSTEM_PROMPT,
-    RESEARCHER_SYSTEM_PROMPT,
-    RESEARCHER_TASK_PROMPT_WITH_EXAMPLE,
-    RESEARCHER_TASK_PROMPT_NO_EXAMPLE,
-    RESEARCHER_TASK_PROMPT_WITH_PREVIOUS_UNSATISFACTORY_TASK_RESULT,
-    CRITIC_SYSTEM_PROMPT,
     CRITIC_PROMPT,
 )
 from nagatoai_core.common.common import print_exchange, send_agent_request
