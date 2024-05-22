@@ -53,5 +53,4 @@ class SerperSearchTool(AbstractTool):
         response = requests.post(url, json=payload, headers=headers)
         data = response.json()
 
-        print(f"**** Response: {data}")
         return data
