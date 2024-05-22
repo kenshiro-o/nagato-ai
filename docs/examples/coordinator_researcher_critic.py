@@ -29,6 +29,7 @@ from nagatoai_core.tool.lib.human.confirm import (
 )
 from nagatoai_core.tool.lib.human.input import HumanInputTool
 from nagatoai_core.tool.lib.web.page_scraper import WebPageScraperTool
+from nagatoai_core.tool.lib.web.serper_search import SerperSearchTool
 from nagatoai_core.tool.lib.filesystem.text_file_reader import TextFileReaderTool
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 from nagatoai_core.tool.provider.anthropic import AnthropicToolProvider
@@ -177,6 +178,7 @@ def main():
     tool_registry.register_tool(HumanConfirmInputTool)
     tool_registry.register_tool(HumanInputTool)
     tool_registry.register_tool(WebPageScraperTool)
+    tool_registry.register_tool(SerperSearchTool)
     tool_registry.register_tool(TextFileReaderTool)
 
     tools_available_str = ""
