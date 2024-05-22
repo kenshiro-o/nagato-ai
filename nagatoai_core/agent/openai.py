@@ -14,7 +14,15 @@ def extract_openai_model_family(model: str) -> str:
     Extracts the model family from the OpenAI model name.
     :param model: The OpenAI model name.
     """
-    family_prefixes = ["gpt-4", "gpt-3.5", "dalle" "davinci", "curie", "babbage", "ada"]
+    family_prefixes = [
+        "gpt-4o",
+        "gpt-4",
+        "gpt-3.5",
+        "dalle" "davinci",
+        "curie",
+        "babbage",
+        "ada",
+    ]
     for prefix in family_prefixes:
         if model.startswith(prefix):
             return prefix

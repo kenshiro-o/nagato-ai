@@ -7,7 +7,7 @@ from nagatoai_core.agent.message import ToolRun
 
 class ToolRunCache(BaseModel):
     """
-    ToolCache represents a cache for tool run
+    ToolRunCache represents a cache for tool run
     """
 
     cache: Dict[str, ToolRun] = {}

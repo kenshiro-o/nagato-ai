@@ -41,10 +41,13 @@ class WebPageScraperTool(AbstractTool):
         :return: The HTML content of the web page as a string.
         """
         url = config.url
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36"
+        }
 
         try:
             # Send a GET request to the URL
-            response = requests.get(url)
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
 
             # Create a BeautifulSoup object to parse the HTML content
