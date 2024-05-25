@@ -14,7 +14,7 @@ def extract_anthropic_model_family(model: str) -> str:
     :param model: The Anthropic model name.
     """
     family_prefixes = [
-        "claude",
+        "claude-3",
     ]
     for prefix in family_prefixes:
         if model.startswith(prefix):

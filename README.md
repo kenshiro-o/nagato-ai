@@ -42,7 +42,8 @@ poetry run python main.py
 Nagato currently supports the following LLMs
 * Claude 3 (Anthropic)
 * GPT-3 to GPT-4 (OpenAI)
-* Groq (which gives you access to Llama 3) 🔥
+* Groq (which gives you access to Llama 3)
+* Google Gemini
 
 ## Examples of AI Agent configuration
 
@@ -64,9 +65,12 @@ In this configuration we have the following:
 * 📚 Researcher: works on a task by performing research
 * ✅ Critic: evaluates whether the task was completed
 
-Example setup for this configuration could look like this:
+
+#### Example using models from different providers
+
 
 ```python
+# Using Claude-3 Opus as the coordinator agent
 coordinator_agent: Agent = create_agent(
     anthropic_api_key,
     "claude-3-opus-20240229",
@@ -75,6 +79,7 @@ coordinator_agent: Agent = create_agent(
     "Coordinator Agent",
 )
 
+# Using GPT-4 turbo as the researcher agent
 researcher_agent = create_agent(
     anthropic_api_key,
     "gpt-4-turbo-2024-04-09",
@@ -83,15 +88,17 @@ researcher_agent = create_agent(
     "Researcher Agent",
 )
 
+# Use Google Genini 1.5 Flash as the critic ahemt
 critic_agent = create_agent(
-    anthropic_api_key,
-    "claude-3-haiku-20240307",
+    google_api_key,
+    "gemini-1.5-flash",
     "Critic",
     CRITIC_SYSTEM_PROMPT,
     "Critic Agent",
 )
 ...
 ```
+
 
 The full blow example is available [here](docs/examples/coordinator_researcher_critic.py)
 
@@ -209,10 +216,12 @@ Moreover, there is a lot of functionality currently missing from Nagato. I will 
 
 * ✅ implement function calling (complement to adding tools)
 * ✅ introduce basic tools (e.g. surfing the web)
-* ✅ Support for Llama 3 (via Groq)
-* 🎯 cache results from function calling
+* ✅ implement agent based on Llama 3 model (via Groq)
+* ✅ implement agent based on Google Gemini models (without function calling)
+* ✅ cache results from function calling
+* ✅ implement v1 of self-reflection and re-planning for agents
+* 🎯 implement function calling for Google Gemini agent
 * 🎯 implement short/long-term memory for agents (with RAG and memory synthesis)
-* 🎯 implement self-reflection and re-planning for agents
 * 🎯 implement additional modalities (e.g. image, sound, etc.)
 * 🎯 Support for local LLMs (e.g. via Ollama)
 * 🎯 LLMOps instrumentation
