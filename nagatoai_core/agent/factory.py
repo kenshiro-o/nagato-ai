@@ -1,11 +1,13 @@
 from openai import OpenAI
 from anthropic import Anthropic
 from groq import Groq
+import google.generativeai as genai
 
 from .agent import Agent
 from .openai import OpenAIAgent
 from .groq import GroqAgent
 from .anthropic import AnthropicAgent
+from .google import GoogleAgent
 
 
 def create_agent(
@@ -31,5 +33,10 @@ def create_agent(
     if model.startswith("llama3"):
         client = Groq(api_key=api_key)
         return GroqAgent(client, model, role, role_description, nickname)
+
+    if model.startswith("gemini"):
+        genai.configure(api_key=api_key)
+        client = genai.GenerativeModel(model)
+        return GoogleAgent(client, model, role, role_description, nickname)
 
     raise ValueError(f"Unsupported model: {model}")

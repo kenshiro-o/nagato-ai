@@ -147,6 +147,7 @@ def main():
     console = Console()
 
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+    google_api_key = os.getenv("GOOGLE_API_KEY")
 
     coordinator_agent: Agent = create_agent(
         anthropic_api_key,
@@ -171,6 +172,14 @@ def main():
         CRITIC_SYSTEM_PROMPT,
         "Critic Agent",
     )
+
+    # critic_agent = create_agent(
+    #     google_api_key,
+    #     "gemini-1.5-flash",
+    #     "Critic",
+    #     CRITIC_SYSTEM_PROMPT,
+    #     "Critic Agent",
+    # )
 
     tool_registry = ToolRegistry()
     tool_registry.register_tool(ReadwiseDocumentFinderTool)
