@@ -28,6 +28,25 @@ Once poetry is installed, then simply run the following command in your termnina
 poetry install
 ```
 
+### Configuring environment variables
+
+By default, Nagato will look for environment variables to create the AI Agents and tools.
+First, make sure to create a `.env` file. Then add those variables to the `.env` file you just created.
+
+You only need to add some of the below environment variables for the model and the tools you plan to use. The current list of environment variables is the following:
+```
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GROQ_API_KEY=
+GOOGLE_API_KEY=
+
+READWISE_API_KEY=
+
+SERPER_API_KEY=
+```
+
+For instance if you only plan to use GPT-based agents and Readwise tools you should only set the `OPENAI_API_KEY` and `READWISE_API_KEY` environment variables.
+
 ### Running Python code
 
 Assuming your program's entrypoint is defined in a file called `main.py`, you can run it by typing the following command:
