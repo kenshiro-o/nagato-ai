@@ -14,6 +14,8 @@ from nagatoai_core.prompt.templates import (
 )
 from nagatoai_core.common.common import send_agent_request, print_exchange
 
+DEFAULT_AGENT_TEMPERATURE = 0.6
+
 
 class SingleAgentTaskRunner(TaskRunner):
     """
@@ -80,7 +82,9 @@ class SingleAgentTaskRunner(TaskRunner):
                     description=self.current_task.description,
                 )
 
-        exchange = send_agent_request(agent, task_prompt, available_tools, 0.6, 2000)
+        exchange = send_agent_request(
+            agent, task_prompt, available_tools, DEFAULT_AGENT_TEMPERATURE, 2000
+        )
         exchanges.append(exchange)
 
         print_exchange(console, agent, exchange, "blue")
@@ -125,7 +129,7 @@ class SingleAgentTaskRunner(TaskRunner):
                 tool_run = ToolRun(id=tool_call.id, call=tool_call, result=tool_result)
 
                 tool_result_exchange = agent.send_tool_run_results(
-                    [tool_result], 0.6, 2000
+                    [tool_result], DEFAULT_AGENT_TEMPERATURE, 2000
                 )
                 exchanges.append(tool_result_exchange)
 

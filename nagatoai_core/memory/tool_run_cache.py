@@ -1,3 +1,4 @@
+import json
 from typing import List, Dict, Optional
 
 from pydantic import BaseModel
@@ -27,7 +28,8 @@ class ToolRunCache(BaseModel):
         :param parameters: The parameters of the tool
         :return: The key for the tool run
         """
-        return f"{tool_name}_{str(hash(frozenset(sorted(parameters.items()))))}"
+        parameters_json = json.dumps(parameters, sort_keys=True, default=str)
+        return f"{tool_name}_{hash(parameters_json)}"
 
     def get_tool_run(self, tool_name: str, parameters: Dict) -> Optional[ToolRun]:
         key = self._get_tool_run_key(tool_name, parameters)

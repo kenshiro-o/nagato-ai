@@ -111,6 +111,10 @@ class OpenAIAgent(Agent):
                     )
                 )
                 response_text += f"Tool call requested: {tool_call.function.name} with parameters: {params_json}\n"
+        else:
+            # TODO - dirty hack to avoid empty responses. In the future find a more elegant solution
+            if not response_text:
+                response_text = "OK"
 
         exchange = Exchange(
             user_msg=Message(sender=Sender.USER, content=prompt),
