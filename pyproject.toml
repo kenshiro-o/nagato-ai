@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nagatoai_core"
-version = "0.12.0"
+version = "0.13.0"
 description = "Nagato-AI is an intuitive AI Agent library that works across multiple LLMs"
 authors = ["Eddie Forson <eddie@edforson.me>"]
 readme = "README.md"
@@ -26,6 +26,7 @@ python-dotenv = "^1.0.1"
 pydantic-settings = "^2.2.1"
 groq = "^0.5.0"
 google-generativeai = "^0.5.4"
+python-dateutil = "^2.9.0.post0"
 
 
 [build-system]

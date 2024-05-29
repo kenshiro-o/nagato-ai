@@ -1,3 +1,5 @@
+from typing import Type
+
 from openai import OpenAI
 from anthropic import Anthropic
 from groq import Groq
@@ -8,6 +10,9 @@ from .openai import OpenAIAgent
 from .groq import GroqAgent
 from .anthropic import AnthropicAgent
 from .google import GoogleAgent
+from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
+from nagatoai_core.tool.provider.anthropic import AnthropicToolProvider
+from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 
 
 def create_agent(
@@ -40,3 +45,18 @@ def create_agent(
         return GoogleAgent(client, model, role, role_description, nickname)
 
     raise ValueError(f"Unsupported model: {model}")
+
+
+def get_agent_tool_provider(agent: Agent) -> Type[AbstractToolProvider]:
+    """
+    Gets the tool provider for the agent.
+    :param agent: The agent.
+    :return: The tool provider for the agent.
+    """
+    if isinstance(agent, OpenAIAgent):
+        return OpenAIToolProvider
+
+    if isinstance(agent, AnthropicAgent):
+        return AnthropicToolProvider
+
+    raise ValueError(f"Unsupported agent: {agent}")

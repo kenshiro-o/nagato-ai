@@ -13,6 +13,8 @@ from nagatoai_core.prompt.templates import (
 )
 from nagatoai_core.common.common import print_exchange, send_agent_request
 
+DEFAULT_CRITIC_TEMPERATURE = 0.6
+
 
 class SingleCriticEvaluator(TaskEvaluator):
     critic_agent: Agent
@@ -54,12 +56,24 @@ class SingleCriticEvaluator(TaskEvaluator):
                         task_result_str += (
                             "\n" + result_tag.get_text(strip=True) + "\n\n"
                         )
+                else:
+                    # Try to extract the task_result parent tag instead
+                    task_result_tag = soup.find("task_result")
+                    if task_result_tag:
+                        task_result_str += (
+                            "\n" + task_result_tag.get_text(strip=True) + "\n\n"
+                        )
+                    else:
+                        # If we can't find anything in task_result then just use the full agent response
+                        task_result_str += (
+                            "\n" + exchange.agent_response.content + "\n\n"
+                        )
 
         critic_prompt = CRITIC_PROMPT.format(
             goal=task.goal, description=task.description, result=task_result_str
         )
         critic_exchange = send_agent_request(
-            self.critic_agent, critic_prompt, [], 0.6, 2000
+            self.critic_agent, critic_prompt, [], DEFAULT_CRITIC_TEMPERATURE, 2000
         )
         print_exchange(console, self.critic_agent, critic_exchange, "red")
 

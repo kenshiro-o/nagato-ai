@@ -120,7 +120,8 @@ class AnthropicAgent(Agent):
 
         for response_content in response.content:
             if response_content.type == "text":
-                response_text = response_content.text
+                # TODO - dirty hack to avoid empty responses. In the future find a more elegant solution
+                response_text = response_content.text if response_content.text else "OK"
             elif response_content.type == "tool_use":
                 tool_id = response_content.id
                 tool_name = response_content.name
