@@ -34,6 +34,9 @@ from nagatoai_core.tool.lib.web.serper_search import SerperSearchTool
 from nagatoai_core.tool.lib.filesystem.text_file_reader import TextFileReaderTool
 from nagatoai_core.tool.lib.time.time_offset import TimeOffsetTool
 from nagatoai_core.tool.lib.time.time_now import TimeNowTool
+from nagatoai_core.tool.lib.audio.tts.openai import OpenAITTSTool
+from nagatoai_core.tool.lib.audio.tts.eleven_labs import ElevenLabsTTSTool
+from nagatoai_core.tool.lib.audio.afplay import AfPlayTool
 from nagatoai_core.prompt.templates import (
     OBJECTIVE_PROMPT,
     COORDINATOR_SYSTEM_PROMPT,
@@ -106,6 +109,9 @@ def main():
     tool_registry.register_tool(TextFileReaderTool)
     tool_registry.register_tool(TimeNowTool)
     tool_registry.register_tool(TimeOffsetTool)
+    tool_registry.register_tool(OpenAITTSTool)
+    tool_registry.register_tool(ElevenLabsTTSTool)
+    tool_registry.register_tool(AfPlayTool)
 
     tools_available_str = ""
     for tool in tool_registry.get_all_tools():
@@ -122,7 +128,18 @@ def main():
             f"<tools_available>{tools_available_str}</tools_available>"
         )
 
-    problem_statement = input("Please enter a problem statement for Nagato to solve:")
+    console.print(
+        '[bold yellow]Please input a problem statement for Nagato to solve then press the "Enter" key:[/bold yellow]'
+    )
+    user_input = []
+
+    while True:
+        line = console.input()
+        if line == "":
+            break
+        user_input.append(line)
+
+    problem_statement = "\n".join(user_input)
 
     problem_statement_prompt = OBJECTIVE_PROMPT.format(
         problem_statement=problem_statement,
@@ -153,6 +170,7 @@ def main():
     sleep(3)
 
     for task in mission.tasks:
+        console.print(f"[bright_cyan] \n\n🤖 Current task: {task}\n\n[/bright_cyan]")
         task_evaluator = SingleCriticEvaluator(critic_agent=critic_agent)
 
         task_runner = SingleAgentTaskRunner(
@@ -170,8 +188,8 @@ def main():
 
         if task.result.outcome != TaskOutcome.MEETS_REQUIREMENT:
             # TODO - Should we exit the program if the task did not successfully complete?
-            print(
-                f"⚠️ Task {task} has not met the requirement. Moving on to next task..."
+            console.print(
+                f"[bright_red]⚠️ Task {task} has not met the requirement. Moving on to next task...[/bright_red]"
             )
 
     markdown_output_str = f"# {mission.objective}\n\n"
