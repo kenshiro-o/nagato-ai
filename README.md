@@ -8,7 +8,7 @@
 
 Nagato-AI is an intuitive AI Agent library that works across multiple LLMs.
 
-Currently it supports OpenAI's GPT and Anthpropic's Claude LLMs. You can create agents from any of the aforementioned family of models and combine them together to build the most effective AI Agent system you desire.
+Currently it supports OpenAI's GPT, Anthpropic's Claude, Google's Gemini, and Groq (e.g. Llama 3) LLMs. You can create agents from any of the aforementioned family of models and combine them together to build the most effective AI Agent system you desire.
 
 The name _Nagato_ is inspired from the popular anime Naruto. In Naruto, Nagato is a very powerful ninja who possesses special eyes (Rinnegan) that gives him immense powers.
 Nagato's powers enable him to control multiple bodies endowed with different abilities. Nagato is also able to see through the eyes of all the bodies which he controls, thereby minimising blindspots that opponents may want to exploit.
@@ -43,6 +43,8 @@ GOOGLE_API_KEY=
 READWISE_API_KEY=
 
 SERPER_API_KEY=
+
+ELEVENLABS_API_KEY=
 ```
 
 For instance if you only plan to use GPT-based agents and Readwise tools you should only set the `OPENAI_API_KEY` and `READWISE_API_KEY` environment variables.
@@ -239,6 +241,7 @@ Moreover, there is a lot of functionality currently missing from Nagato. I will 
 * ✅ implement agent based on Google Gemini models (without function calling)
 * ✅ cache results from function calling
 * ✅ implement v1 of self-reflection and re-planning for agents
+* ✅ Implement audio/text-to-speech tools
 * 🎯 implement function calling for Google Gemini agent
 * 🎯 implement short/long-term memory for agents (with RAG and memory synthesis)
 * 🎯 implement additional modalities (e.g. image, sound, etc.)
