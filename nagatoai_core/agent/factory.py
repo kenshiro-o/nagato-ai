@@ -13,6 +13,7 @@ from .google import GoogleAgent
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 from nagatoai_core.tool.provider.anthropic import AnthropicToolProvider
 from nagatoai_core.tool.provider.openai import OpenAIToolProvider
+from nagatoai_core.tool.provider.google import GoogleToolProvider
 
 
 def create_agent(
@@ -58,5 +59,8 @@ def get_agent_tool_provider(agent: Agent) -> Type[AbstractToolProvider]:
 
     if isinstance(agent, AnthropicAgent):
         return AnthropicToolProvider
+
+    if isinstance(agent, GoogleAgent):
+        return GoogleToolProvider
 
     raise ValueError(f"Unsupported agent: {agent}")

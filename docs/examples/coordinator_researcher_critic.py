@@ -75,6 +75,14 @@ def main():
     )
 
     # researcher_agent = create_agent(
+    #     google_api_key,
+    #     "gemini-1.5-flash",
+    #     "Researcher",
+    #     RESEARCHER_SYSTEM_PROMPT,
+    #     "Researcher Agent",
+    # )
+
+    # researcher_agent = create_agent(
     #     openai_api_key,
     #     "gpt-4o",
     #     "Researcher",
@@ -129,7 +137,7 @@ def main():
         )
 
     console.print(
-        '[bold yellow]Please input a problem statement for Nagato to solve then press the "Enter" key:[/bold yellow]'
+        '[bold yellow]Please input a problem statement for Nagato to solve then press the "Enter" key twice:[/bold yellow]'
     )
     user_input = []
 
@@ -159,7 +167,11 @@ def main():
     tasks_list: List[Task] = []
     for task in tasks:
         goal = task.find("goal").get_text(strip=True)
-        description = task.find("description").get_text(strip=True)
+        description = (
+            task.find("description").get_text(strip=True)
+            if task.find("description")
+            else ""
+        )
 
         task = Task(goal=goal, description=description)
         tasks_list.append(task)
