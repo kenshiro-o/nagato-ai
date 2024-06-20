@@ -1,10 +1,15 @@
-from typing import List
+from typing import List, Optional
+import json
 
 import google.generativeai as genai
+import google.ai.generativelanguage as glm
+from google.protobuf.struct_pb2 import Struct
+from google.protobuf.json_format import MessageToDict
+
 
 from .agent import Agent
 from .message import Sender, Message, Exchange, ToolResult, ToolCall
-from nagatoai_core.tool.provider.openai import OpenAIToolProvider
+from nagatoai_core.tool.provider.google import GoogleToolProvider
 
 
 def extract_google_model_family(model: str) -> str:
@@ -45,10 +50,33 @@ class GoogleAgent(Agent):
         self.client = client
         self.exchange_history: List[Exchange] = []
 
+    def _print_messages(self, messages: List):
+        """
+        Prints contents of the messages list that we submit to the Gemini model.
+        """
+
+        def _make_json_serializable(obj):
+            """
+            Recursively converts protobuf Structs and other non-serializable objects
+            to JSON-serializable types.
+            """
+            if isinstance(obj, Struct):
+                return MessageToDict(obj)
+            elif isinstance(obj, list):
+                return [_make_json_serializable(item) for item in obj]
+            elif isinstance(obj, dict):
+                return {k: _make_json_serializable(v) for k, v in obj.items()}
+            else:
+                return obj
+
+        print(
+            f"****GEMINI MESSAGE: {json.dumps(_make_json_serializable(messages), indent=2)}"
+        )
+
     def chat(
         self,
         prompt: str,
-        tools: List[OpenAIToolProvider],
+        tools: List[GoogleToolProvider],
         temperature: float,
         max_tokens: int,
     ) -> Exchange:
@@ -70,22 +98,51 @@ class GoogleAgent(Agent):
         # so we prepend the role description to the user message to act as the system prompt
         messages[0]["parts"].insert(0, f"---\n{self.role_description}---\n")
 
+        response: Optional[genai.types.GenerateContentResponse] = None
+
         gen_config = genai.types.GenerationConfig(
             candidate_count=1, max_output_tokens=max_tokens, temperature=temperature
         )
 
-        response: genai.types.GenerateContentResponse = self.client.generate_content(
-            messages,
-            generation_config=gen_config,
-        )
+        # Uncomment if you want to debug
+        # self._print_messages(messages)
+
+        if len(tools) > 0:
+            response = self.client.generate_content(
+                messages,
+                generation_config=gen_config,
+                tools=[tool.schema() for tool in tools],
+            )
+        else:
+            response = self.client.generate_content(
+                messages,
+                generation_config=gen_config,
+            )
 
         # TODO - Implement logic to handle tool call responses
 
-        response_text = response.text
+        response_text: str = ""
+        tool_calls: List[ToolCall] = []
+
+        for part in response.parts:
+            if fn := part.function_call:
+                fn_name = fn.name
+                args_dict = {k: v for k, v in fn.args.items()}
+                tool_call_msg = f"Tool call requested: function {fn_name} with parameters: {args_dict}"
+                response_text += f"{tool_call_msg}\n"
+                # Note - Gemini models do not provide an id per tool call - so we're going to use the function name instead
+                tool_calls.append(
+                    ToolCall(id=fn_name, name=fn_name, parameters=args_dict)
+                )
+            else:
+                response_text += part.text
+
         exchange = Exchange(
             user_msg=Message(sender=Sender.USER, content=prompt),
             agent_response=Message(
-                sender=Sender.AGENT, content=response_text, tool_calls=[]
+                sender=Sender.AGENT,
+                content=response_text,
+                tool_calls=tool_calls,
             ),
         )
         self.exchange_history.append(exchange)
@@ -102,8 +159,64 @@ class GoogleAgent(Agent):
         :param max_tokens: The maximum number of tokens to generate.
         :return: Exchange object containing the user message and the agent response.
         """
-        # @TODO Implement this method
-        return None
+        messages = self._build_chat_history()
+
+        final_tool_result_content = ""
+        fn_res_result_parts = []
+        for tool_result in tool_results:
+            tool_result_json = json.dumps(tool_result.result, indent=2)
+
+            # We must use a protobuf Struct for the tool response result
+            struct_response = Struct()
+            # Make sure we are sending over a dictionary
+            tool_run_result = {
+                "result": tool_result.result,
+            }
+            struct_response.update(tool_run_result)
+
+            fn_res_result_parts.append(
+                {
+                    "function_response": {
+                        "name": tool_result.name,
+                        "response": struct_response,
+                    }
+                }
+            )
+            final_tool_result_content += f"{tool_result_json}\n"
+
+        messages.append(
+            {
+                "role": "function",
+                "parts": fn_res_result_parts,
+            }
+        )
+
+        gen_config = genai.types.GenerationConfig(
+            candidate_count=1, max_output_tokens=max_tokens, temperature=temperature
+        )
+
+        response = self.client.generate_content(
+            messages,
+            generation_config=gen_config,
+        )
+
+        response_text: str = response.text
+
+        exchange = Exchange(
+            user_msg=Message(
+                sender=Sender.TOOL_RESULT,
+                content=final_tool_result_content,
+                tool_results=tool_results,
+            ),
+            agent_response=Message(
+                sender=Sender.AGENT,
+                content=response_text,
+            ),
+        )
+
+        self.exchange_history.append(exchange)
+
+        return exchange
 
     def _build_chat_history(self) -> List:
         """
@@ -111,10 +224,35 @@ class GoogleAgent(Agent):
         :return: List of messages in the chat history.
         """
         messages = []
-        for i, exchange in enumerate(self.exchange_history):
+        for exchange in self.exchange_history:
             user_content = []
-            if exchange.user_msg.content:
 
+            if exchange.user_msg.tool_results:
+                fn_call_res_parts = []
+                for tool_result in exchange.user_msg.tool_results:
+                    struct_response = Struct()
+
+                    # Make sure we are sending over a dictionary
+                    tool_run_result = {
+                        "result": tool_result.result,
+                    }
+                    struct_response.update(tool_run_result)
+                    fn_call_res_parts.append(
+                        {
+                            "function_response": {
+                                "name": tool_result.name,
+                                "response": struct_response,
+                            }
+                        }
+                    )
+                user_content.append(
+                    {
+                        "role": "function",
+                        "parts": fn_call_res_parts,
+                    }
+                )
+
+            if exchange.user_msg.content:
                 user_content.append(
                     {
                         "role": "user",
@@ -125,6 +263,26 @@ class GoogleAgent(Agent):
             messages.extend(user_content)
 
             assistant_content = []
+            if exchange.agent_response.tool_calls:
+                tool_call_parts = []
+                for tool_call in exchange.agent_response.tool_calls:
+                    struct_fn_args = Struct()
+                    struct_fn_args.update(tool_call.parameters)
+                    tool_call_parts.append(
+                        {
+                            "function_call": {
+                                "name": tool_call.name,
+                                "args": struct_fn_args,
+                            }
+                        }
+                    )
+                assistant_content.append(
+                    {
+                        "role": "model",
+                        "parts": tool_call_parts,
+                    }
+                )
+
             if exchange.agent_response.content:
                 assistant_content.append(
                     {
