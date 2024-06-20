@@ -1,10 +1,7 @@
 from typing import Dict, Type, Union
-from datetime import datetime
 
 from .abstract_tool_provider import AbstractToolProvider, get_json_schema_type
 from ..abstract_tool import TOOL_METADATA_EXCLUDE_FROM_SCHEMA
-
-import google.ai.generativelanguage as glm
 
 
 class GoogleToolProvider(AbstractToolProvider):
@@ -12,8 +9,6 @@ class GoogleToolProvider(AbstractToolProvider):
     GoogleToolProvider is a wrapper for all tools that are compatible with Google's function calling
     functionality.
     """
-
-    # glm.Type.ARRAY
 
     def _get_field_schema(self, field_type: Type) -> Dict:
         if hasattr(field_type, "__origin__"):
@@ -31,10 +26,7 @@ class GoogleToolProvider(AbstractToolProvider):
                     "nullable": True,
                     **union_type,
                 }
-
-        # if field_type == datetime:
-        #     return {"type_": "string", "format": "date-time"}
-
+        # "type_" is used instead of "type" because "type" is a reserved keyword in Google Protobuf spec
         return {"type_": get_json_schema_type(field_type).upper()}
 
     def _generate_schema(self) -> Dict:
