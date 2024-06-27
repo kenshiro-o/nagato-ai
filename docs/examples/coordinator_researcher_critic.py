@@ -32,9 +32,16 @@ from nagatoai_core.tool.lib.human.input import HumanInputTool
 from nagatoai_core.tool.lib.web.page_scraper import WebPageScraperTool
 from nagatoai_core.tool.lib.web.serper_search import SerperSearchTool
 from nagatoai_core.tool.lib.filesystem.text_file_reader import TextFileReaderTool
+from nagatoai_core.tool.lib.filesystem.file_checker import FileCheckerTool
 from nagatoai_core.tool.lib.time.time_offset import TimeOffsetTool
 from nagatoai_core.tool.lib.time.time_now import TimeNowTool
+from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDownloadTool
+from nagatoai_core.tool.lib.video.details_checker import VideoCheckerTool
+from nagatoai_core.tool.lib.audio.stt.groq_whisper import GroqWhisperTool
+from nagatoai_core.tool.lib.audio.stt.assemblyai import AssemblyAITranscriptionTool
+from nagatoai_core.tool.lib.audio.stt.openai_whisper import OpenAIWhisperTool
 from nagatoai_core.tool.lib.audio.tts.openai import OpenAITTSTool
+from nagatoai_core.tool.lib.audio.video_to_mp3 import VideoToMP3Tool
 from nagatoai_core.tool.lib.audio.tts.eleven_labs import ElevenLabsTTSTool
 from nagatoai_core.tool.lib.audio.afplay import AfPlayTool
 from nagatoai_core.prompt.templates import (
@@ -60,7 +67,7 @@ def main():
 
     coordinator_agent: Agent = create_agent(
         anthropic_api_key,
-        "claude-3-opus-20240229",
+        "claude-3-5-sonnet-20240620",
         "Coordinator",
         COORDINATOR_SYSTEM_PROMPT,
         "Coordinator Agent",
@@ -68,7 +75,7 @@ def main():
 
     researcher_agent = create_agent(
         anthropic_api_key,
-        "claude-3-sonnet-20240229",
+        "claude-3-5-sonnet-20240620",
         "Researcher",
         RESEARCHER_SYSTEM_PROMPT,
         "Researcher Agent",
@@ -114,10 +121,17 @@ def main():
     tool_registry.register_tool(HumanInputTool)
     tool_registry.register_tool(WebPageScraperTool)
     tool_registry.register_tool(SerperSearchTool)
+    tool_registry.register_tool(FileCheckerTool)
     tool_registry.register_tool(TextFileReaderTool)
     tool_registry.register_tool(TimeNowTool)
     tool_registry.register_tool(TimeOffsetTool)
+    tool_registry.register_tool(VideoCheckerTool)
+    tool_registry.register_tool(YouTubeVideoDownloadTool)
+    tool_registry.register_tool(GroqWhisperTool)
     tool_registry.register_tool(OpenAITTSTool)
+    tool_registry.register_tool(AssemblyAITranscriptionTool)
+    tool_registry.register_tool(VideoToMP3Tool)
+    tool_registry.register_tool(OpenAIWhisperTool)
     tool_registry.register_tool(ElevenLabsTTSTool)
     tool_registry.register_tool(AfPlayTool)
 
