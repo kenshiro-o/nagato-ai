@@ -39,6 +39,7 @@ from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDown
 from nagatoai_core.tool.lib.video.details_checker import VideoCheckerTool
 from nagatoai_core.tool.lib.audio.stt.groq_whisper import GroqWhisperTool
 from nagatoai_core.tool.lib.audio.stt.assemblyai import AssemblyAITranscriptionTool
+from nagatoai_core.tool.lib.audio.stt.openai_whisper import OpenAIWhisperTool
 from nagatoai_core.tool.lib.audio.tts.openai import OpenAITTSTool
 from nagatoai_core.tool.lib.audio.video_to_mp3 import VideoToMP3Tool
 from nagatoai_core.tool.lib.audio.tts.eleven_labs import ElevenLabsTTSTool
@@ -130,6 +131,7 @@ def main():
     tool_registry.register_tool(OpenAITTSTool)
     tool_registry.register_tool(AssemblyAITranscriptionTool)
     tool_registry.register_tool(VideoToMP3Tool)
+    tool_registry.register_tool(OpenAIWhisperTool)
     tool_registry.register_tool(ElevenLabsTTSTool)
     tool_registry.register_tool(AfPlayTool)
 

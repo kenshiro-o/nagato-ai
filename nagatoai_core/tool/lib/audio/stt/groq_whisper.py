@@ -22,7 +22,7 @@ class GroqWhisperConfig(BaseSettings, BaseModel):
 
     model: str = Field(
         "whisper-large-v3",
-        description="The Whisper model to use for transcription.",
+        description="The Whisper model to use for transcription. The only option available right now is 'whisper-large-v3'",
     )
 
     prompt: str = Field(
@@ -81,15 +81,18 @@ class GroqWhisperTool(AbstractTool):
                     temperature=config.temperature,
                 )
 
-            print(f"*** Transcription: {transcription.text}")
-
-            return {
+            output = {
                 "transcription": transcription.text,
                 "file_name": os.path.basename(config.file_path),
                 "model_used": config.model,
                 "language": config.language or "auto-detected",
                 "response_format": config.response_format,
             }
+
+            if config.response_format == "verbose_json":
+                output["segments"] = transcription.segments
+
+            return output
 
         except Exception as e:
             raise RuntimeError(f"Error transcribing audio/video file: {str(e)}")
