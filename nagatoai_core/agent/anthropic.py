@@ -201,6 +201,10 @@ class AnthropicAgent(Agent):
                 tc = ToolCall(id=tool_id, name=tool_name, parameters=tool_input)
                 tool_calls.append(tc)
 
+        if not response_text:
+            # Hack to avoid empty responses
+            response_text = "OK"
+
         exchange = Exchange(
             user_msg=Message(
                 sender=Sender.TOOL_RESULT,

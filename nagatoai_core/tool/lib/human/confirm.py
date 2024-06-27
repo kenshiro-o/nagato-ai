@@ -36,4 +36,7 @@ class HumanConfirmInputTool(AbstractTool):
         """
         confirm = Confirm.ask("[bold yellow]" + config.message + "[/bold yellow]")
 
-        return confirm
+        return {
+            "message": config.message,
+            "confirmed": confirm,
+        }
