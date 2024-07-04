@@ -81,8 +81,8 @@ class AssemblyAITranscriptionTool(AbstractTool):
                 "words": [
                     {
                         "text": w.text,
-                        "start": w.start,
-                        "end": w.end,
+                        "start_seconds": w.start / 1000.0,
+                        "end_seconds": w.end / 1000.0,
                         "confidence": w.confidence,
                     }
                     for w in transcript.words
@@ -98,11 +98,23 @@ class AssemblyAITranscriptionTool(AbstractTool):
                     {
                         "speaker": u.speaker,
                         "text": u.text,
-                        "start": u.start,
-                        "end": u.end,
+                        "start_seconds": u.start / 1000.0,
+                        "end_seconds": u.end / 1000.0,
                     }
                     for u in transcript.utterances
                 ]
+
+            sentences = transcript.get_sentences()
+            sentences_text = []
+            for sentence in sentences:
+                sentences_text.append(
+                    {
+                        "text": sentence.text,
+                        "start_seconds": sentence.start / 1000.0,
+                        "end_seconds": sentence.end / 1000.0,
+                    }
+                )
+            result["sentences"] = sentences_text
 
             return result
 
