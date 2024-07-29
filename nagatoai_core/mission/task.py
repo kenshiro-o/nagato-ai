@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union, Optional
+from typing import Union, Optional, List
 from datetime import datetime
 import uuid
 
@@ -53,6 +53,7 @@ class Task(BaseModel):
     id: str
     goal: str
     description: str
+    tools_recommended: Optional[List[str]] = []
     result: Union[TaskResult, None] = None
     status: TaskStatus = TaskStatus.PENDING
     start_time: Optional[datetime] = None

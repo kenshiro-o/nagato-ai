@@ -36,7 +36,9 @@ def send_agent_request(
         return agent.chat(prompt, tools, temperature, max_tokens)
 
 
-def print_exchange(console: Console, agent: Agent, exchange: Exchange, color: str):
+def print_exchange(
+    console: Console, agent: Agent, exchange: Exchange, color: str, task_id: str = ""
+):
     """
     Prints the exchange between the user and the agent.
     :param agent: The agent involved in the exchange.
@@ -46,7 +48,7 @@ def print_exchange(console: Console, agent: Agent, exchange: Exchange, color: st
     console.print(
         Panel(
             exchange.user_msg.content,
-            title=f"<{agent.model}> {agent.name} Prompt",
+            title=f"<model={agent.model}, task-id={task_id}> {agent.name} Prompt ",
             title_align="left",
             border_style=color,
         )
@@ -57,7 +59,7 @@ def print_exchange(console: Console, agent: Agent, exchange: Exchange, color: st
             console.print(
                 Panel(
                     str(tool_result.result),
-                    title=f"<{agent.model}> {agent.name} Tool Result",
+                    title=f"<model={agent.model}, task-id={task_id}> {agent.name} Tool Result ",
                     title_align="left",
                     border_style=color,
                 )
@@ -66,7 +68,7 @@ def print_exchange(console: Console, agent: Agent, exchange: Exchange, color: st
         console.print(
             Panel(
                 exchange.agent_response.content,
-                title=f"<{agent.model}> {agent.name} Response",
+                title=f"<model={agent.model}, task-id={task_id}> {agent.name} Response",
                 title_align="left",
                 border_style=color,
             )

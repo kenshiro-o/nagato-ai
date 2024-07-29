@@ -10,9 +10,9 @@ class TextFileReaderConfig(BaseModel):
     TextFileReaderConfig represents the configuration for the TextFileReaderTool.
     """
 
-    file_path: str = Field(
+    full_path: str = Field(
         ...,
-        description="The path to the text file to read",
+        description="The full path to the text file to read",
     )
 
 
@@ -35,10 +35,10 @@ class TextFileReaderTool(AbstractTool):
         :return: The contents of the text file as a string.
         """
         try:
-            with open(config.file_path, "r") as file:
+            with open(config.full_path, "r") as file:
                 content = file.read()
             return content
         except FileNotFoundError:
-            return f"File not found: {config.file_path}"
+            return f"File not found: {config.full_path}"
         except Exception as e:
             return f"Error reading file: {str(e)}"

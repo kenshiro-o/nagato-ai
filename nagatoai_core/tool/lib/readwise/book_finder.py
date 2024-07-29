@@ -29,7 +29,7 @@ class ReadwiseDocumentFinderTool(AbstractTool):
 
     name: str = "readwise_document_finder"
     description: str = (
-        """Searches for a document in Readwise given its name. Returns a JSON object that contains the details of the document stored in Readwise.
+        """readwise_document_finder searches for a document in Readwise given its name. Returns a JSON object that contains the details of the document stored in Readwise.
         If no document with this name is found, the response will be null.
         """
     )
@@ -71,12 +71,19 @@ class ReadwiseDocumentFinderTool(AbstractTool):
         current_count = 0
         total_documents = response["count"]
 
+        config_doc_name_sanitised = (
+            config.document_name.lower().strip().replace("  ", " ")
+        )
         while True:
             results = response["results"]
             current_count += len(results)
 
             for result in results:
-                if config.document_name.lower() == result["title"].lower():
+                # Remove leading/trailing spaces and make sure we never have double spaces either
+                result_title_sanitised = (
+                    result["title"].lower().strip().replace("  ", " ")
+                )
+                if config_doc_name_sanitised == result_title_sanitised:
                     return result
 
             if current_count >= total_documents:
