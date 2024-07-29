@@ -14,7 +14,7 @@ class ReadwiseBookHighlightsListerConfig(BaseReadwiseConfig, BaseModel):
 
     book_id: int = Field(
         ...,
-        description="The ID of the book to list the highlights for in Readwise.",
+        description="The ID of the book, article, or podcast to list the highlights for in Readwise.",
     )
 
 
@@ -25,7 +25,7 @@ class ReadwiseBookHighlightsListerTool(AbstractTool):
 
     name: str = "readwise_book_highlights_lister"
     description: str = (
-        """Lists the highlights for a book in Readwise given its ID. Returns a JSON object that contains the highlights of the book stored in Readwise. If no book with this ID is found, the response will be and empty array."""
+        """readwise_book_highlights_lister lists the highlights from Readwise given the document's book id. Returns a JSON object that contains the highlights of the book stored in Readwise. If no book with this ID is found, the response will be and empty array."""
     )
     args_schema: Type[BaseModel] = ReadwiseBookHighlightsListerConfig
 

@@ -132,9 +132,12 @@ For the task below:
 <task>
     <goal>{goal}</goal>
     <description>{description}</description>
+    <tools_recommended>{tools_recommended}</tools_recommended>
 </task>
 
-Please provide a detailed result inside <task_result> tags. Ensure to output correctly formed XML tags (e.g. opening <task_result> and closing </task_result> tags).
+Please provide a detailed result inside <task_result> tags.
+You can decide whether or not to use the tools in the <tools_recommended> tag.
+Ensure to output correctly formed XML tags (e.g. opening <task_result> and closing </task_result> tags).
 """
 
 
@@ -144,9 +147,11 @@ For the task below:
 <task>
     <goal>{goal}</goal>
     <description>{description}</description>
+    <tools_recommended>{tools_recommended}</tools_recommended>
 </task>
 
 Please provide a detailed result inside <task_result> tags.
+You can decide whether or not to use the tools in the <tools_recommended> tag.
 """
 
 
@@ -172,9 +177,11 @@ Execute the task below while taking into account the feedback provided by the re
 <task>
     <goal>{goal}</goal>
     <description>{description}</description>
+    <tools_recommended>{tools_recommended}</tools_recommended>
 </task>
 
 Please provide a detailed result inside <task_result> tags.
+You can decide whether or not to use the tools in the <tools_recommended> tag.
 """
 
 # If any tools are required to complete the task, list them under the <tools_to_use> tag.

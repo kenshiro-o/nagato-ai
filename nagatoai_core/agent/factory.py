@@ -36,7 +36,7 @@ def create_agent(
         client = Anthropic(api_key=api_key)
         return AnthropicAgent(client, model, role, role_description, nickname)
 
-    if model.startswith("llama3"):
+    if model.startswith("llama-3"):
         client = Groq(api_key=api_key)
         return GroqAgent(client, model, role, role_description, nickname)
 
@@ -55,6 +55,9 @@ def get_agent_tool_provider(agent: Agent) -> Type[AbstractToolProvider]:
     :return: The tool provider for the agent.
     """
     if isinstance(agent, OpenAIAgent):
+        return OpenAIToolProvider
+
+    if isinstance(agent, GroqAgent):
         return OpenAIToolProvider
 
     if isinstance(agent, AnthropicAgent):

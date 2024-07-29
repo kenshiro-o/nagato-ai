@@ -43,7 +43,7 @@ class ReadwiseHighightsListerTool(AbstractTool):
 
     name: str = "readwise_highlights_lister"
     description: str = (
-        """Lists the highlights from Readwise. You can filter the highlights using optional filters like tags array and datetime range."""
+        """readwise_highlights_lister lists the highlights from Readwise when a book id is not available. You can filter the highlights using optional filters like tags array and datetime range."""
     )
     args_schema: Type[BaseModel] = ReadwiseHighightsListerConfig
 

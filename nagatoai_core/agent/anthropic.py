@@ -23,38 +23,6 @@ def extract_anthropic_model_family(model: str) -> str:
     return model.split("-")[0]
 
 
-tools_json_schema_example = [
-    {
-        "name": "readwise_book_finder",
-        "description": "Searches for a book in Readwise given its name. Returns a JSON object that contains the details of the book stored in Readwise. If no book with this name is found, the response will be null.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "book_name": {
-                    "type": "string",
-                    "description": "The name of the book to search for in Readwise.",
-                }
-            },
-            "required": ["book_name"],
-        },
-    },
-    {
-        "name": "readwise_book_highlights_lister",
-        "description": "Lists the highlights for a book in Readwise given its ID. Returns a JSON object that contains the highlights of the book stored in Readwise. If no book with this ID is found, the response will be and empty array.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "book_id": {
-                    "type": "integer",
-                    "description": "The ID of the book to list the highlights for in Readwise.",
-                }
-            },
-            "required": ["book_id"],
-        },
-    },
-]
-
-
 class AnthropicAgent(Agent):
     """
     AnthropicAgent is an Agent that uses the Anthropic Claude API under the hood.
@@ -141,11 +109,16 @@ class AnthropicAgent(Agent):
         return exchange
 
     def send_tool_run_results(
-        self, tool_results: List[ToolResult], temperature: float, max_tokens: int
+        self,
+        tool_results: List[ToolResult],
+        tools: List[AnthropicToolProvider],
+        temperature: float,
+        max_tokens: int,
     ) -> Exchange:
         """
         Returns the results of the running of one or multiple tools
         :param tool_results: The results of the running of one or multiple tools
+        :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
         :param max_tokens: The maximum number of tokens to generate.
         :return: Exchange object containing the user message and the agent response.
@@ -184,7 +157,7 @@ class AnthropicAgent(Agent):
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
-            tools=tools_json_schema_example,
+            tools=[tool.schema() for tool in tools],
         )
 
         response_text = ""

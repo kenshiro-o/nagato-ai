@@ -1,8 +1,7 @@
 import os
 import re
-from typing import List, Optional, Type
+from typing import List
 from time import sleep
-from enum import Enum
 
 from rich.console import Console
 from bs4 import BeautifulSoup
@@ -11,8 +10,8 @@ from dotenv import load_dotenv
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.agent.factory import create_agent, get_agent_tool_provider
 from nagatoai_core.common.common import print_exchange, send_agent_request
-from nagatoai_core.mission.mission import Mission, MissionStatus
-from nagatoai_core.mission.task import Task, TaskStatus, TaskOutcome, TaskResult
+from nagatoai_core.mission.mission import Mission
+from nagatoai_core.mission.task import Task, TaskOutcome
 from nagatoai_core.runner.single_agent_task_runner import SingleAgentTaskRunner
 from nagatoai_core.runner.single_critic_evaluator import SingleCriticEvaluator
 from nagatoai_core.tool.registry import ToolRegistry
@@ -32,6 +31,7 @@ from nagatoai_core.tool.lib.human.input import HumanInputTool
 from nagatoai_core.tool.lib.web.page_scraper import WebPageScraperTool
 from nagatoai_core.tool.lib.web.serper_search import SerperSearchTool
 from nagatoai_core.tool.lib.filesystem.text_file_reader import TextFileReaderTool
+from nagatoai_core.tool.lib.filesystem.text_file_writer import TextFileWriterTool
 from nagatoai_core.tool.lib.filesystem.file_checker import FileCheckerTool
 from nagatoai_core.tool.lib.time.time_offset import TimeOffsetTool
 from nagatoai_core.tool.lib.time.time_now import TimeNowTool
@@ -64,6 +64,7 @@ def main():
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
     google_api_key = os.getenv("GOOGLE_API_KEY")
     openai_api_key = os.getenv("OPENAI_API_KEY")
+    groq_api_key = os.getenv("GROQ_API_KEY")
 
     coordinator_agent: Agent = create_agent(
         anthropic_api_key,
@@ -91,7 +92,15 @@ def main():
 
     # researcher_agent = create_agent(
     #     openai_api_key,
-    #     "gpt-4o",
+    #     "gpt-4o-mini-2024-07-18",
+    #     "Researcher",
+    #     RESEARCHER_SYSTEM_PROMPT,
+    #     "Researcher Agent",
+    # )
+
+    # researcher_agent = create_agent(
+    #     groq_api_key,
+    #     "llama-3.1-70b-versatile",
     #     "Researcher",
     #     RESEARCHER_SYSTEM_PROMPT,
     #     "Researcher Agent",
@@ -105,9 +114,17 @@ def main():
     #     "Critic Agent",
     # )
 
+    # critic_agent = create_agent(
+    #     google_api_key,
+    #     "gemini-1.5-flash",
+    #     "Critic",
+    #     CRITIC_SYSTEM_PROMPT,
+    #     "Critic Agent",
+    # )
+
     critic_agent = create_agent(
-        google_api_key,
-        "gemini-1.5-flash",
+        openai_api_key,
+        "gpt-4o-mini-2024-07-18",
         "Critic",
         CRITIC_SYSTEM_PROMPT,
         "Critic Agent",
@@ -123,6 +140,7 @@ def main():
     tool_registry.register_tool(SerperSearchTool)
     tool_registry.register_tool(FileCheckerTool)
     tool_registry.register_tool(TextFileReaderTool)
+    tool_registry.register_tool(TextFileWriterTool)
     tool_registry.register_tool(TimeNowTool)
     tool_registry.register_tool(TimeOffsetTool)
     tool_registry.register_tool(VideoCheckerTool)
@@ -187,7 +205,13 @@ def main():
             else ""
         )
 
-        task = Task(goal=goal, description=description)
+        # Find all the tools recommended in tools_recommended
+        tools_recommended = task.find_all("tool")
+        tools_recs = []
+        for tool in tools_recommended:
+            tools_recs.append(tool.get_text(strip=True))
+
+        task = Task(goal=goal, description=description, tools_recommended=tools_recs)
         tasks_list.append(task)
 
     mission = Mission(

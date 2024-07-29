@@ -63,7 +63,7 @@ poetry run python main.py
 Nagato currently supports the following LLMs
 * Claude 3 (Anthropic)
 * GPT-3 to GPT-4 (OpenAI)
-* Groq (which gives you access to Llama 3)
+* Groq (which gives you access to Llama 3.1)
 * Google Gemini
 
 ## Examples of AI Agent configuration
@@ -242,7 +242,7 @@ Moreover, there is a lot of functionality currently missing from Nagato. I will 
 * ✅ cache results from function calling
 * ✅ implement v1 of self-reflection and re-planning for agents
 * ✅ Implement audio/text-to-speech tools
-* 🎯 implement function calling for Google Gemini agent
+* ✅ implement function calling for Google Gemini agent
 * 🎯 implement short/long-term memory for agents (with RAG and memory synthesis)
 * 🎯 implement additional modalities (e.g. image, sound, etc.)
 * 🎯 Support for local LLMs (e.g. via Ollama)

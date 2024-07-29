@@ -4,7 +4,13 @@ from datetime import datetime, timezone
 from rich.console import Console
 
 from nagatoai_core.runner.task_runner import TaskRunner
-from nagatoai_core.agent.message import Exchange, ToolResult, ToolRun
+from nagatoai_core.mission.task import Task
+from nagatoai_core.agent.message import (
+    Exchange,
+    ToolResult,
+    ToolRun,
+    ToolCall,
+)  # Added ToolCall here
 from nagatoai_core.mission.task import TaskResult, TaskOutcome
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 from nagatoai_core.prompt.templates import (
@@ -13,8 +19,20 @@ from nagatoai_core.prompt.templates import (
     RESEARCHER_TASK_PROMPT_WITH_PREVIOUS_UNSATISFACTORY_TASK_RESULT,
 )
 from nagatoai_core.common.common import send_agent_request, print_exchange
+from nagatoai_core.agent.agent import Agent  # Import the Agent class
 
 DEFAULT_AGENT_TEMPERATURE = 0.6
+
+
+def generate_tools_recommended_xml_str(task: Task) -> str:
+    """
+    Generate an XML string for the tools recommended for a task
+    """
+    tools_recommended_xml = ""
+    for tool in task.tools_recommended:
+        tools_recommended_xml += f"<tool><name>{tool}</name></tool>"
+
+    return tools_recommended_xml
 
 
 class SingleAgentTaskRunner(TaskRunner):
@@ -28,6 +46,55 @@ class SingleAgentTaskRunner(TaskRunner):
         # check if there is only one agent
         if len(self.agents) != 1:
             raise ValueError("SingleAgentTaskRunner requires only one agent")
+
+    def _run_tool_call(
+        self,
+        tool_call: ToolCall,
+        agent: Agent,
+        exchanges: List[Exchange],
+        console: Console,
+    ) -> Exchange:
+        """
+        Runs a tool call
+        """
+        tool = self.tool_registry.get_tool(tool_call.name)
+        tool_instance = tool()
+        tool_params_schema = tool_instance.args_schema
+        tool_params = tool_params_schema(**tool_call.parameters)
+
+        tool_run = self.tool_cache.get_tool_run(tool_call.name, tool_call.parameters)
+
+        # Make sure that the tool run result is not an error or Exception
+        if tool_run and not isinstance(tool_run.result.result, BaseException):
+            tool_output = tool_run.result.result
+        else:
+            tool_output = tool_instance._run(tool_params)
+
+        tool_result = ToolResult(
+            id=tool_call.id, name=tool_call.name, result=tool_output, error=None
+        )
+
+        tool_run = ToolRun(id=tool_call.id, call=tool_call, result=tool_result)
+
+        tool_result_exchange = agent.send_tool_run_results(
+            [tool_result], DEFAULT_AGENT_TEMPERATURE, 2000
+        )
+        exchanges.append(tool_result_exchange)
+
+        self.tool_cache.add_tool_run(tool_run)
+
+        # print(
+        #     f"*** Assistant from Tool Call reply: {tool_result_exchange.agent_response}"
+        # )
+        print_exchange(
+            console,
+            agent,
+            tool_result_exchange,
+            "orange_red1",
+            task_id=self.current_task.id,
+        )
+
+        return tool_result_exchange
 
     def _run(self) -> List[Exchange]:
         """
@@ -53,6 +120,8 @@ class SingleAgentTaskRunner(TaskRunner):
 
         exchanges: List[Exchange] = []
 
+        t_recs = generate_tools_recommended_xml_str(self.current_task)
+
         # TODO In the future implement a PromptBuilder class that is responsible for generating prompts given:
         #  - the current task
         #  - the previous task
@@ -68,6 +137,7 @@ class SingleAgentTaskRunner(TaskRunner):
                     outcome=self.current_task.result.outcome,
                     evaluation=self.current_task.result.evaluation,
                     description=self.current_task.description,
+                    tools_recommended=t_recs,
                 )
             )
         else:
@@ -75,11 +145,13 @@ class SingleAgentTaskRunner(TaskRunner):
                 task_prompt = RESEARCHER_TASK_PROMPT_NO_EXAMPLE.format(
                     goal=self.current_task.goal,
                     description=self.current_task.description,
+                    tools_recommended=t_recs,
                 )
             else:
                 task_prompt = RESEARCHER_TASK_PROMPT_WITH_EXAMPLE.format(
                     goal=self.current_task.goal,
                     description=self.current_task.description,
+                    tools_recommended=t_recs,
                 )
 
         exchange = send_agent_request(
@@ -87,7 +159,7 @@ class SingleAgentTaskRunner(TaskRunner):
         )
         exchanges.append(exchange)
 
-        print_exchange(console, agent, exchange, "blue")
+        print_exchange(console, agent, exchange, "blue", task_id=self.current_task.id)
 
         latest_exchange = exchange
         while True:
@@ -95,7 +167,7 @@ class SingleAgentTaskRunner(TaskRunner):
                 # print("*** No tool calls to process for task ** breaking out of loop ***")
                 break
 
-            # TODO - Move this block into a separate function
+            # TODO - Move this block into the method _run_tool_call
             #  where we can tell the agent that the tool name or parameter is incorrect
             #  and get the agent to suggest the appropriate tool name and parameters
             for tool_call in latest_exchange.agent_response.tool_calls:
@@ -132,7 +204,7 @@ class SingleAgentTaskRunner(TaskRunner):
                 tool_run = ToolRun(id=tool_call.id, call=tool_call, result=tool_result)
 
                 tool_result_exchange = agent.send_tool_run_results(
-                    [tool_result], DEFAULT_AGENT_TEMPERATURE, 2000
+                    [tool_result], available_tools, DEFAULT_AGENT_TEMPERATURE, 2000
                 )
                 exchanges.append(tool_result_exchange)
 
@@ -141,7 +213,13 @@ class SingleAgentTaskRunner(TaskRunner):
                 # print(
                 #     f"*** Assistant from Tool Call reply: {tool_result_exchange.agent_response}"
                 # )
-                print_exchange(console, agent, tool_result_exchange, "orange_red1")
+                print_exchange(
+                    console,
+                    agent,
+                    tool_result_exchange,
+                    "orange_red1",
+                    task_id=self.current_task.id,
+                )
 
             latest_exchange = exchanges[-1]
 
