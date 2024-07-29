@@ -222,9 +222,7 @@ class SingleAgentTaskRunner(TaskRunner):
                 )
 
             latest_exchange = exchanges[-1]
-            print("*** Latest ")
 
-        print(f"*** Length of exchanges after tool calls = {len(exchanges)}")
         return exchanges
 
     def run(self) -> List[Exchange]:

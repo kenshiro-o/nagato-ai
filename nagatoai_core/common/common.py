@@ -59,7 +59,7 @@ def print_exchange(
             console.print(
                 Panel(
                     str(tool_result.result),
-                    title=f"<model={agent.model}, task-id={task_id}> {agent.name} Tool Result ",
+                    title=f"<model={agent.model}, task-id={task_id}> {agent.name} Tool Result",
                     title_align="left",
                     border_style=color,
                 )
