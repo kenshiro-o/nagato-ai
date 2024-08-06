@@ -1,9 +1,18 @@
 from anthropic import Client
-from typing import List, Union, Optional
+from typing import List, Optional
 import json
 
+from datetime import datetime, timezone
+
 from .agent import Agent
-from .message import Sender, Message, Exchange, ToolRun, ToolCall, ToolResult
+from .message import (
+    Sender,
+    Message,
+    Exchange,
+    ToolCall,
+    ToolResult,
+    TokenStatsAndParams,
+)
 from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.anthropic import AnthropicToolProvider
 
@@ -47,9 +56,11 @@ class AnthropicAgent(Agent):
         super().__init__(model, role, role_description, nickname)
         self.client = client
         self.exchange_history: List[Exchange] = []
+        # self.langfuse = Langfuse()
 
     def chat(
         self,
+        task: Optional[Task],
         prompt: str,
         tools: List[AnthropicToolProvider],
         temperature: float,
@@ -57,6 +68,7 @@ class AnthropicAgent(Agent):
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
+        :param task: The task object details of the task being run.
         :param prompt: The current prompt.
         :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
@@ -65,6 +77,7 @@ class AnthropicAgent(Agent):
         messages = self._build_chat_history()
         messages.append({"role": "user", "content": prompt})
 
+        msg_send_time = datetime.now(timezone.utc)
         if len(tools) == 0:
             response = self.client.messages.create(
                 model=self.model,
@@ -83,6 +96,8 @@ class AnthropicAgent(Agent):
                 tools=[tool.schema() for tool in tools],
             )
 
+        msg_receive_time = datetime.now(timezone.utc)
+
         response_text = ""
         tool_calls: List[ToolCall] = []
 
@@ -99,9 +114,21 @@ class AnthropicAgent(Agent):
                 tool_calls.append(tc)
 
         exchange = Exchange(
-            user_msg=Message(sender=Sender.USER, content=prompt),
+            chat_history=messages,
+            user_msg=Message(
+                sender=Sender.USER, content=prompt, created_at=msg_send_time
+            ),
             agent_response=Message(
-                sender=Sender.AGENT, content=response_text, tool_calls=tool_calls
+                sender=Sender.AGENT,
+                content=response_text,
+                tool_calls=tool_calls,
+                created_at=msg_receive_time,
+            ),
+            token_stats_and_params=TokenStatsAndParams(
+                input_tokens_used=response.usage.input_tokens,
+                output_tokens_used=response.usage.output_tokens,
+                max_tokens=max_tokens,
+                temperature=temperature,
             ),
         )
         self.exchange_history.append(exchange)
@@ -110,6 +137,7 @@ class AnthropicAgent(Agent):
 
     def send_tool_run_results(
         self,
+        task: Optional[Task],
         tool_results: List[ToolResult],
         tools: List[AnthropicToolProvider],
         temperature: float,
@@ -117,6 +145,7 @@ class AnthropicAgent(Agent):
     ) -> Exchange:
         """
         Returns the results of the running of one or multiple tools
+        :param task: The task object details of the task being run.
         :param tool_results: The results of the running of one or multiple tools
         :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
@@ -151,6 +180,7 @@ class AnthropicAgent(Agent):
                 }
             )
 
+        msg_send_time = datetime.now(timezone.utc)
         response = self.client.beta.tools.messages.create(
             model=self.model,
             system=self.role_description,
@@ -159,6 +189,7 @@ class AnthropicAgent(Agent):
             max_tokens=max_tokens,
             tools=[tool.schema() for tool in tools],
         )
+        msg_receive_time = datetime.now(timezone.utc)
 
         response_text = ""
         tool_calls: List[ToolCall] = []
@@ -179,13 +210,24 @@ class AnthropicAgent(Agent):
             response_text = "OK"
 
         exchange = Exchange(
+            chat_history=messages,
             user_msg=Message(
                 sender=Sender.TOOL_RESULT,
                 content=final_tool_result_content,
                 tool_results=tool_results,
+                created_at=msg_send_time,
             ),
             agent_response=Message(
-                sender=Sender.AGENT, content=response_text, tool_calls=tool_calls
+                sender=Sender.AGENT,
+                content=response_text,
+                tool_calls=tool_calls,
+                created_at=msg_receive_time,
+            ),
+            token_stats_and_params=TokenStatsAndParams(
+                input_tokens_used=response.usage.input_tokens,
+                output_tokens_used=response.usage.output_tokens,
+                max_tokens=max_tokens,
+                temperature=temperature,
             ),
         )
         self.exchange_history.append(exchange)

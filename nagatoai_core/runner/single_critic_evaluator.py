@@ -1,8 +1,8 @@
-from abc import ABC, abstractmethod
-from typing import Optional, List, Dict, Type
+from typing import List, Dict
 from rich.console import Console
 from bs4 import BeautifulSoup
 
+from langfuse import Langfuse
 
 from nagatoai_core.mission.task import Task, TaskResult, TaskOutcome
 from nagatoai_core.agent.message import Exchange
@@ -21,9 +21,12 @@ class SingleCriticEvaluator(TaskEvaluator):
 
     class Config:
         arbitrary_types_allowed = True
+        extra = "allow"
 
     def __init__(self, **data):
         super().__init__(**data)
+
+        self.langfuse = None if not self.tracing_enabled else Langfuse()
 
     def evaluate(
         self, task: Task, agents: Dict[str, Agent], exchanges: List[Exchange]
@@ -32,13 +35,18 @@ class SingleCriticEvaluator(TaskEvaluator):
         Evaluates the task
         """
         console = Console()
+        lf_trace = None
+        if self.tracing_enabled:
+            lf_trace = self.langfuse.trace(
+                name=f"SingleCriticEvaluator - Task {task.goal}",
+                session_id=task.id,
+            )
 
         # TODO - Create a class that can flatten exchanges into a multi-line string
         task_result_str = ""
         # Construct critic prompt input containing all answers from exchanges of the current task
-        for i, exchange in enumerate(exchanges):
+        for _, exchange in enumerate(exchanges):
             if exchange.user_msg.tool_results:
-                print(f"*** [{i}] Exchange has tool results ***")
                 task_result_str += (
                     "\n" + str(exchange.user_msg.tool_results[-1].result) + "\n\n"
                 )
@@ -46,7 +54,6 @@ class SingleCriticEvaluator(TaskEvaluator):
                     "\n\n---\n" + exchange.agent_response.content + "\n\n"
                 )
             else:
-                print(f"*** [{i}] Exchange has no tool calls ***")
                 soup = BeautifulSoup(exchange.agent_response.content, "html.parser")
                 result_tag = soup.find("result")
                 if result_tag:
@@ -73,8 +80,9 @@ class SingleCriticEvaluator(TaskEvaluator):
             goal=task.goal, description=task.description, result=task_result_str
         )
         critic_exchange = send_agent_request(
-            self.critic_agent, critic_prompt, [], DEFAULT_CRITIC_TEMPERATURE, 2000
+            self.critic_agent, task, critic_prompt, [], DEFAULT_CRITIC_TEMPERATURE, 2000
         )
+
         print_exchange(console, self.critic_agent, critic_exchange, "red")
 
         # TODO - create an ExchangeDecoder class that can decode an exchange and return Any type (e.g. a Dict or tuple)
@@ -88,5 +96,30 @@ class SingleCriticEvaluator(TaskEvaluator):
         task_result = TaskResult(
             result=task_result_str, evaluation=evaluation, outcome=outcome_enum
         )
+
+        if lf_trace:
+            lf_trace.generation(
+                start_time=critic_exchange.user_msg.created_at,
+                model=self.critic_agent.model,
+                name=f"{self.critic_agent.name} - critic exchange",
+                input=critic_exchange.chat_history,
+                model_parameters={
+                    "max_tokens": critic_exchange.token_stats_and_params.max_tokens,
+                    "temperature": critic_exchange.token_stats_and_params.temperature,
+                },
+                metadata={
+                    "task_id": task.id,
+                    "task_goal": task.goal,
+                    "task_description": task.description,
+                    "task_outcome": str(outcome_enum),
+                },
+                output=critic_exchange.agent_response.content,
+                end_time=critic_exchange.agent_response.created_at,
+                usage={
+                    "input": critic_exchange.token_stats_and_params.input_tokens_used,
+                    "output": critic_exchange.token_stats_and_params.output_tokens_used,
+                    "unit:": "TOKENS",
+                },
+            )
 
         return task_result

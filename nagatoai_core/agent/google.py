@@ -1,14 +1,22 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 import json
 
 import google.generativeai as genai
 import google.ai.generativelanguage as glm
 from google.protobuf.struct_pb2 import Struct
 from google.protobuf.json_format import MessageToDict
-
+from datetime import datetime, timezone
 
 from .agent import Agent
-from .message import Sender, Message, Exchange, ToolResult, ToolCall
+from .message import (
+    Sender,
+    Message,
+    Exchange,
+    ToolResult,
+    ToolCall,
+    TokenStatsAndParams,
+)
+from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.google import GoogleToolProvider
 
 
@@ -50,9 +58,10 @@ class GoogleAgent(Agent):
         self.client = client
         self.exchange_history: List[Exchange] = []
 
-    def _print_messages(self, messages: List):
+    def _serialize_message(self, messages: List) -> Dict:
         """
-        Prints contents of the messages list that we submit to the Gemini model.
+        Recursively converts protobuf Structs and other non-serializable objects
+        to JSON-serializable types.
         """
 
         def _make_json_serializable(obj):
@@ -69,12 +78,19 @@ class GoogleAgent(Agent):
             else:
                 return obj
 
+        return _make_json_serializable(messages)
+
+    def _print_messages(self, messages: List):
+        """
+        Prints contents of the messages list that we submit to the Gemini model.
+        """
         print(
-            f"****GEMINI MESSAGE: {json.dumps(_make_json_serializable(messages), indent=2)}"
+            f"**** GEMINI MESSAGE: {json.dumps(self._serialize_message(messages), indent=2)} ****"
         )
 
     def chat(
         self,
+        task: Optional[Task],
         prompt: str,
         tools: List[GoogleToolProvider],
         temperature: float,
@@ -82,6 +98,7 @@ class GoogleAgent(Agent):
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
+        :param task: The task object details of the task being run.
         :param prompt: The current prompt.
         :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
@@ -107,6 +124,7 @@ class GoogleAgent(Agent):
         # Uncomment if you want to debug
         # self._print_messages(messages)
 
+        msg_send_time = datetime.now(timezone.utc)
         if len(tools) > 0:
             response = self.client.generate_content(
                 messages,
@@ -118,6 +136,7 @@ class GoogleAgent(Agent):
                 messages,
                 generation_config=gen_config,
             )
+        msg_receive_time = datetime.now(timezone.utc)
 
         # TODO - Implement logic to handle tool call responses
 
@@ -138,19 +157,31 @@ class GoogleAgent(Agent):
                 response_text += part.text
 
         exchange = Exchange(
-            user_msg=Message(sender=Sender.USER, content=prompt),
+            chat_history=self._serialize_message(messages),
+            user_msg=Message(
+                sender=Sender.USER, content=prompt, created_at=msg_send_time
+            ),
             agent_response=Message(
                 sender=Sender.AGENT,
                 content=response_text,
                 tool_calls=tool_calls,
+                created_at=msg_receive_time,
+            ),
+            token_stats_and_params=TokenStatsAndParams(
+                input_tokens_used=response.usage_metadata.prompt_token_count,
+                output_tokens_used=response.usage_metadata.candidates_token_count,
+                temperature=temperature,
+                max_tokens=max_tokens,
             ),
         )
+
         self.exchange_history.append(exchange)
 
         return exchange
 
     def send_tool_run_results(
         self,
+        task: Optional[Task],
         tool_results: List[ToolResult],
         tools: List[GoogleToolProvider],
         temperature: float,
@@ -158,6 +189,7 @@ class GoogleAgent(Agent):
     ) -> Exchange:
         """
         Returns the results of the running of one or multiple tools
+        :param task: The task object details of the task being run.
         :param tool_results: The results of the running of one or multiple tools
         :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
@@ -200,22 +232,33 @@ class GoogleAgent(Agent):
             candidate_count=1, max_output_tokens=max_tokens, temperature=temperature
         )
 
+        msg_send_time = datetime.now(timezone.utc)
         response = self.client.generate_content(
             messages,
             generation_config=gen_config,
         )
+        msg_receive_time = datetime.now(timezone.utc)
 
         response_text: str = response.text
 
         exchange = Exchange(
+            chat_history=self._serialize_message(messages),
             user_msg=Message(
                 sender=Sender.TOOL_RESULT,
                 content=final_tool_result_content,
                 tool_results=tool_results,
+                created_at=msg_send_time,
             ),
             agent_response=Message(
                 sender=Sender.AGENT,
                 content=response_text,
+                created_at=msg_receive_time,
+            ),
+            token_stats_and_params=TokenStatsAndParams(
+                input_tokens_used=response.usage_metadata.prompt_token_count,
+                output_tokens_used=response.usage_metadata.candidates_token_count,
+                temperature=temperature,
+                max_tokens=max_tokens,
             ),
         )
 

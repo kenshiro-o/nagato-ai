@@ -28,6 +28,7 @@ class TaskRunner(BaseModel, ABC):
     agent_tool_providers: Dict[str, Type[AbstractToolProvider]]
     task_evaluator: TaskEvaluator
     tool_cache: ToolRunCache = ToolRunCache()
+    tracing_enabled: bool = False
 
     @abstractmethod
     def run(self) -> List[Exchange]:

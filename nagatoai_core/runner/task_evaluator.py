@@ -17,6 +17,8 @@ class TaskEvaluator(BaseModel, ABC):
     TaskEvaluator is used to evaluate a given task
     """
 
+    tracing_enabled: bool = False
+
     def __init__(self, **data):
         super().__init__(**data)
 
