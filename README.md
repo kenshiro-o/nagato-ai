@@ -68,7 +68,7 @@ Nagato currently supports the following LLMs
 
 ## LLMOps (Instrumentation)
 
-Currently Nagato AI use [Langfuse](https://langfuse.com/) for tracing LLM calls.
+Currently Nagato AI uses [Langfuse](https://langfuse.com/) for tracing LLM calls.
 Set the environment variables below to be able to send traces:
 
 ```
@@ -256,10 +256,10 @@ Moreover, there is a lot of functionality currently missing from Nagato. I will 
 * ✅ implement v1 of self-reflection and re-planning for agents
 * ✅ Implement audio/text-to-speech tools
 * ✅ implement function calling for Google Gemini agent
+* ✅ LLMOps instrumentation (via Langfuse)
 * 🎯 implement short/long-term memory for agents (with RAG and memory synthesis)
 * 🎯 implement additional modalities (e.g. image, sound, etc.)
 * 🎯 Support for local LLMs (e.g. via Ollama)
-* 🎯 LLMOps instrumentation
 
 # How can you support
 
