@@ -66,6 +66,19 @@ Nagato currently supports the following LLMs
 * Groq (which gives you access to Llama 3.1)
 * Google Gemini
 
+## LLMOps (Instrumentation)
+
+Currently Nagato AI uses [Langfuse](https://langfuse.com/) for tracing LLM calls.
+Set the environment variables below to be able to send traces:
+
+```
+LANGFUSE_SECRET_KEY=
+LANGFUSE_PUBLIC_KEY=
+```
+
+You can see how Langfuse is being used in the `SingleAgentTaskRunner` class.
+
+
 ## Examples of AI Agent configuration
 
 Nagato is built with flexibility at its core, so you could program it using your paradigm of choice. However these are some of the ways I've seen people use Nagato so far.
@@ -243,10 +256,10 @@ Moreover, there is a lot of functionality currently missing from Nagato. I will 
 * ✅ implement v1 of self-reflection and re-planning for agents
 * ✅ Implement audio/text-to-speech tools
 * ✅ implement function calling for Google Gemini agent
+* ✅ LLMOps instrumentation (via Langfuse)
 * 🎯 implement short/long-term memory for agents (with RAG and memory synthesis)
 * 🎯 implement additional modalities (e.g. image, sound, etc.)
 * 🎯 Support for local LLMs (e.g. via Ollama)
-* 🎯 LLMOps instrumentation
 
 # How can you support
 

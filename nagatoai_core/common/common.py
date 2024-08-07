@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from rich.console import Console
 from rich.panel import Panel
@@ -6,11 +6,13 @@ from rich.progress import Progress, SpinnerColumn
 
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.agent.message import Exchange
+from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 
 
 def send_agent_request(
     agent: Agent,
+    task: Optional[Task],
     prompt: str,
     tools: List[AbstractToolProvider],
     temperature: float,
@@ -33,7 +35,7 @@ def send_agent_request(
         transient=True,
     ) as progress:
         progress.add_task(f"[cyan]Sending request to agent {agent.name}", total=None)
-        return agent.chat(prompt, tools, temperature, max_tokens)
+        return agent.chat(task, prompt, tools, temperature, max_tokens)
 
 
 def print_exchange(

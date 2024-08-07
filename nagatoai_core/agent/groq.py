@@ -2,10 +2,19 @@ from typing import List, Optional
 import json
 
 from groq import Groq
-from openai.types.chat import ChatCompletion
+from groq.types.chat import ChatCompletion
+from datetime import datetime, timezone
 
 from .agent import Agent
-from .message import Sender, Message, Exchange, ToolResult, ToolCall
+from .message import (
+    Sender,
+    Message,
+    Exchange,
+    ToolResult,
+    ToolCall,
+    TokenStatsAndParams,
+)
+from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.openai import (
     OpenAIToolProvider,
 )  # Groq tool calling mechanism is similar to OpenAI's
@@ -59,6 +68,7 @@ class GroqAgent(Agent):
 
     def chat(
         self,
+        task: Optional[Task],
         prompt: str,
         tools: List[OpenAIToolProvider],
         temperature: float,
@@ -66,6 +76,7 @@ class GroqAgent(Agent):
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
+        :param task: The task object details of the task being run.
         :param prompt: The current prompt.
         :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
@@ -81,6 +92,8 @@ class GroqAgent(Agent):
         messages = previous_messages + [current_message]
 
         response: Optional[ChatCompletion] = None
+
+        msg_send_time = datetime.now(timezone.utc)
         if len(tools) > 0:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -97,6 +110,7 @@ class GroqAgent(Agent):
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
+        msg_receive_time = datetime.now(timezone.utc)
 
         response_text = response.choices[0].message.content
         tool_calls: List[ToolCall] = []
@@ -115,9 +129,21 @@ class GroqAgent(Agent):
                 response_text += f"Tool call requested: {tool_call.function.name} with parameters: {params_json}\n"
 
         exchange = Exchange(
-            user_msg=Message(sender=Sender.USER, content=prompt),
+            chat_history=messages,
+            user_msg=Message(
+                sender=Sender.USER, content=prompt, created_at=msg_send_time
+            ),
             agent_response=Message(
-                sender=Sender.AGENT, content=response_text, tool_calls=tool_calls
+                sender=Sender.AGENT,
+                content=response_text,
+                tool_calls=tool_calls,
+                created_at=msg_receive_time,
+            ),
+            token_stats_and_params=TokenStatsAndParams(
+                input_tokens_used=response.usage.prompt_tokens,
+                output_tokens_used=response.usage.completion_tokens,
+                temperature=temperature,
+                max_tokens=max_tokens,
             ),
         )
         self.exchange_history.append(exchange)
@@ -126,6 +152,7 @@ class GroqAgent(Agent):
 
     def send_tool_run_results(
         self,
+        task: Optional[Task],
         tool_results: List[ToolResult],
         tools: List[OpenAIToolProvider],
         temperature: float,
@@ -133,6 +160,7 @@ class GroqAgent(Agent):
     ) -> Exchange:
         """
         Returns the results of the running of one or multiple tools
+        :param task: The task object details of the task being run.
         :param tool_results: The results of the running of one or multiple tools
         :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
@@ -155,24 +183,35 @@ class GroqAgent(Agent):
 
             final_tool_result_content += f"{tool_result_json}\n"
 
+        msg_send_time = datetime.now(timezone.utc)
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
         )
+        msg_receive_time = datetime.now(timezone.utc)
 
         response_text = response.choices[0].message.content
 
         exchange = Exchange(
+            chat_history=messages,
             user_msg=Message(
                 sender=Sender.TOOL_RESULT,
                 content=final_tool_result_content,
                 tool_results=tool_results,
+                created_at=msg_send_time,
             ),
             agent_response=Message(
                 sender=Sender.AGENT,
                 content=response_text,
+                created_at=msg_receive_time,
+            ),
+            token_stats_and_params=TokenStatsAndParams(
+                input_tokens_used=response.usage.prompt_tokens,
+                output_tokens_used=response.usage.completion_tokens,
+                temperature=temperature,
+                max_tokens=max_tokens,
             ),
         )
 

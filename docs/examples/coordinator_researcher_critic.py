@@ -6,6 +6,7 @@ from time import sleep
 from rich.console import Console
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from langfuse import Langfuse
 
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.agent.factory import create_agent, get_agent_tool_provider
@@ -114,21 +115,21 @@ def main():
     #     "Critic Agent",
     # )
 
-    # critic_agent = create_agent(
-    #     google_api_key,
-    #     "gemini-1.5-flash",
-    #     "Critic",
-    #     CRITIC_SYSTEM_PROMPT,
-    #     "Critic Agent",
-    # )
-
     critic_agent = create_agent(
-        openai_api_key,
-        "gpt-4o-mini-2024-07-18",
+        google_api_key,
+        "gemini-1.5-flash",
         "Critic",
         CRITIC_SYSTEM_PROMPT,
         "Critic Agent",
     )
+
+    # critic_agent = create_agent(
+    #     openai_api_key,
+    #     "gpt-4o-mini-2024-07-18",
+    #     "Critic",
+    #     CRITIC_SYSTEM_PROMPT,
+    #     "Critic Agent",
+    # )
 
     tool_registry = ToolRegistry()
     tool_registry.register_tool(ReadwiseDocumentFinderTool)
@@ -186,8 +187,13 @@ def main():
         tools_available=tools_available_str,
     )
 
+    planner_task = Task(
+        goal="Generate plan and objective",
+        description="Generate objective given input description. Then formulate a plan with tasks to complete based on input description and objective.",
+    )
+
     coordinator_exchange = send_agent_request(
-        coordinator_agent, problem_statement_prompt, [], 0.6, 2000
+        coordinator_agent, planner_task, problem_statement_prompt, [], 0.6, 2000
     )
 
     soup = BeautifulSoup(coordinator_exchange.agent_response.content, "html.parser")
@@ -195,6 +201,35 @@ def main():
     tasks = soup.find_all("task")
 
     print_exchange(console, coordinator_agent, coordinator_exchange, "purple")
+
+    # TODO - Improve the way we do tracing...
+    langfuse = Langfuse()
+    lf_trace = langfuse.trace(
+        name="Planner agent trace",
+        session_id=planner_task.id,
+    )
+    lf_trace.generation(
+        start_time=coordinator_exchange.user_msg.created_at,
+        model=coordinator_agent.model,
+        name=f"{coordinator_agent.name} - initial exchange",
+        input=coordinator_exchange.chat_history,
+        model_parameters={
+            "max_tokens": coordinator_exchange.token_stats_and_params.max_tokens,
+            "temperature": coordinator_exchange.token_stats_and_params.temperature,
+        },
+        metadata={
+            "task_id": planner_task.id,
+            "task_goal": planner_task.goal,
+            "task_description": planner_task.description,
+        },
+        output=coordinator_exchange.agent_response.content,
+        end_time=coordinator_exchange.agent_response.created_at,
+        usage={
+            "input": coordinator_exchange.token_stats_and_params.input_tokens_used,
+            "output": coordinator_exchange.token_stats_and_params.output_tokens_used,
+            "unit:": "TOKENS",
+        },
+    )
 
     tasks_list: List[Task] = []
     for task in tasks:
@@ -221,7 +256,9 @@ def main():
 
     for task in mission.tasks:
         console.print(f"[bright_cyan] \n\n🤖 Current task: {task}\n\n[/bright_cyan]")
-        task_evaluator = SingleCriticEvaluator(critic_agent=critic_agent)
+        task_evaluator = SingleCriticEvaluator(
+            critic_agent=critic_agent, tracing_enabled=True
+        )
 
         task_runner = SingleAgentTaskRunner(
             previous_task=None,
@@ -232,6 +269,7 @@ def main():
                 "worker_agent": get_agent_tool_provider(researcher_agent)
             },
             task_evaluator=task_evaluator,
+            tracing_enabled=True,
         )
 
         task_runner.run()

@@ -1,5 +1,7 @@
 from enum import Enum
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any
+
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -54,6 +56,18 @@ class Message(BaseModel):
     content: str
     tool_calls: List[ToolCall] = []
     tool_results: List[ToolResult] = []
+    created_at: datetime
+
+
+class TokenStatsAndParams(BaseModel):
+    """
+    TokenStatsAndParams represents the tokens used and the parameters used in generating a response from the model
+    """
+
+    input_tokens_used: int
+    output_tokens_used: int
+    max_tokens: int
+    temperature: float
 
 
 class Exchange(BaseModel):
@@ -61,5 +75,7 @@ class Exchange(BaseModel):
     Exchange represents a message exchange between the user and the agent
     """
 
+    chat_history: List
     user_msg: Message
     agent_response: Message
+    token_stats_and_params: TokenStatsAndParams

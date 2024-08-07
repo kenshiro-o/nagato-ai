@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Union
+from typing import List, Optional
 import uuid
 
 from .message import Exchange, ToolResult
@@ -43,6 +43,7 @@ class Agent(ABC):
     @abstractmethod
     def chat(
         self,
+        task: Optional[Task],
         prompt: str,
         tools: List[AbstractToolProvider],
         temperature: float,
@@ -50,6 +51,7 @@ class Agent(ABC):
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
+        :param task: The task object details of the task being run.
         :param prompt: The current prompt.
         :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
@@ -61,6 +63,7 @@ class Agent(ABC):
     @abstractmethod
     def send_tool_run_results(
         self,
+        task: Optional[Task],
         tool_results: List[ToolResult],
         tools: List[AbstractToolProvider],
         temperature: float,
@@ -68,6 +71,7 @@ class Agent(ABC):
     ) -> Exchange:
         """
         Returns the results of the running of one or multiple tools
+        :param task: The task object details of the task being run
         :param tool_results: The results of the running of one or multiple tools
         :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
