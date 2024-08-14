@@ -23,6 +23,8 @@ class Ring(Link):
         description="The link that will convert the agent parameters to the tool parameters. Set to nil if you want to manually convert the agent parameters to the tool parameters.",
     )
 
+    # TODO Create a separate internal method for running a link -> this will allow us to do retries etc.
+
     def forward(self, input_data: Iterable) -> Any:
         """
         Forward the data through the ring

@@ -1591,6 +1591,20 @@ files = [
 pyasn1 = ">=0.1.3"
 
 [[package]]
+name = "scrapingbee"
+version = "2.0.1"
+description = "ScrapingBee Python SDK"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "scrapingbee-2.0.1-py3-none-any.whl", hash = "sha256:55c7eca71f5be891718795750b3149a2aead1458b0ae6716fdefeb6cf8e81e82"},
+    {file = "scrapingbee-2.0.1.tar.gz", hash = "sha256:b33622d4c6111c0ae454fa23398a43dccf7b7e126cc44ac498d3411a8514069f"},
+]
+
+[package.dependencies]
+requests = "*"
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -1972,4 +1986,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "6e46c45a3fe3f37f02a243217cded28890fed44f3fc88938b426128e639378cd"
+content-hash = "e50d56b521f3568fbe43738de255bda7c3fb1c9db7d7d9adf30ace9d05bc88fe"
