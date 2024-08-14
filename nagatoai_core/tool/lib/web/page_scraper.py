@@ -1,8 +1,10 @@
 from typing import Any, Type
+import gzip
+import chardet
 
 from pydantic import BaseModel, Field
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
@@ -18,8 +20,8 @@ class WebPageScraperConfig(BaseModel):
     )
 
     simplified_output: bool = Field(
-        default=True,
-        description="Whether to simplify the output by removing unnecessary script and style tags for instance. The default value is True.",
+        default=False,
+        description="Whether to simplify the output by removing unnecessary script and style tags for instance. The default value is False.",
     )
 
 
@@ -42,7 +44,13 @@ class WebPageScraperTool(AbstractTool):
         """
         url = config.url
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Cache-Control": "max-age=0",
         }
 
         try:
@@ -50,17 +58,46 @@ class WebPageScraperTool(AbstractTool):
             response = requests.get(url, headers=headers)
             response.raise_for_status()
 
-            # Create a BeautifulSoup object to parse the HTML content
-            soup = BeautifulSoup(response.text, "html.parser")
+            # Check if the content is gzipped
+            if response.headers.get("Content-Encoding") == "gzip":
+                try:
+                    content = gzip.decompress(response.content)
+                except gzip.BadGzipFile:
+                    # If decompression fails, use the original content
+                    content = response.content
+            else:
+                content = response.content
 
-            # Remove script and style tags to reduce size of output
-            for script in soup(["script", "style"]):
+            # Detect the encoding
+            encoding = chardet.detect(content)["encoding"]
+
+            # Decode the content
+            html_content = content.decode(encoding or "utf-8", errors="replace")
+
+            # Create a BeautifulSoup object to parse the HTML content
+            soup = BeautifulSoup(html_content, "html.parser")
+
+            # Remove script, style and link tags to reduce size of output
+            for script in soup(["script", "style", "link"]):
                 script.decompose()
+
+            # Remove comments
+            for comment in soup.find_all(text=lambda text: isinstance(text, Comment)):
+                comment.extract()
+
+            if not config.simplified_output:
+                clean_html = soup.prettify()
+                return {
+                    "page_url": config.url,
+                    "html_content": clean_html,
+                }
 
             # Get the text content of the page
             text_content = soup.get_text(separator="\n", strip=True)
-
-            return text_content
+            return {
+                "page_url": config.url,
+                "html_content": text_content,
+            }
 
         except requests.exceptions.RequestException as e:
             raise Exception(f"Error occurred while scraping the web page: {str(e)}")
