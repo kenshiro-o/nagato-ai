@@ -58,6 +58,12 @@ class GoogleAgent(Agent):
         self.client = client
         self.exchange_history: List[Exchange] = []
 
+    def clear_memory(self) -> None:
+        """
+        Clears the agent's memory.
+        """
+        self.exchange_history = []
+
     def _serialize_message(self, messages: List) -> Dict:
         """
         Recursively converts protobuf Structs and other non-serializable objects

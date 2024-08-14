@@ -64,6 +64,12 @@ class OpenAIAgent(Agent):
         self.client = client
         self.exchange_history: List[Exchange] = []
 
+    def clear_memory(self) -> None:
+        """
+        Clears the agent's memory.
+        """
+        self.exchange_history = []
+
     def chat(
         self,
         task: Optional[Task],

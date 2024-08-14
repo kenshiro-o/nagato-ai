@@ -56,7 +56,12 @@ class AnthropicAgent(Agent):
         super().__init__(model, role, role_description, nickname)
         self.client = client
         self.exchange_history: List[Exchange] = []
-        # self.langfuse = Langfuse()
+
+    def clear_memory(self) -> None:
+        """
+        Clears the agent's memory.
+        """
+        self.exchange_history = []
 
     def chat(
         self,

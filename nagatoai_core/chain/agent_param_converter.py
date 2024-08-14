@@ -1,5 +1,6 @@
 from typing import Any, Dict
 import json
+import traceback
 
 from pydantic import BaseModel
 from bs4 import BeautifulSoup
@@ -14,6 +15,7 @@ class AgentParamConverter(BaseModel):
     """
 
     agent: Agent
+    clear_memory_after_conversion: bool = True
 
     class Config:
         arbitrary_types_allowed = True
@@ -70,6 +72,28 @@ class AgentParamConverter(BaseModel):
         <params_instance>
         As you can see, the 'output_format' field was set 'json' because while it is not present in the input data, 'json' is the default we should use for this field.
         ---
+        Another example. Given the following <input_data> and a light schema which is a dictionary of fields and their meaning:
+        <input_data>
+        {{
+            "food": ["melon", "banana", "orange", "grape", "apricot", "apple"],
+            "drink": ["water", "juice", "soda", "milk", "tea", "coffee"]
+        }}
+        </input_data>
+
+        <target_schema>
+        {{
+            "fruits": "A list of fruits",
+        }}
+        </target_schema>
+
+        You should output the following JSON object under the <params_instance> tag:
+        <params_instance>
+        {{
+            "fruits": ["melon", "banana", "orange", "grape", "apricot", "apple"]
+        }}
+        </params_instance>
+        As you can see, the 'food' field from the <input_data> tag was set to the list of fruits in the input data because the placeholder variable in the target schema was 'fruits'.
+        ---
 
         Now, given the following <input_data> and <target_schema>:
         <input_data>
@@ -83,23 +107,31 @@ class AgentParamConverter(BaseModel):
         Please specify the result inside the <params_instance> tag:
         """
 
-        input_data = params_data["input_data"]
-        target_schema = params_data["target_schema"]
+        try:
+            input_data = params_data["input_data"]
+            target_schema = params_data["target_schema"]
 
-        full_prompt = conv_prompt.format(
-            input_data=input_data, target_schema=target_schema
-        )
+            full_prompt = conv_prompt.format(
+                input_data=input_data, target_schema=target_schema
+            )
 
-        exchange = self.agent.chat(full_prompt, [], 0.6, 2000)
-        resp = exchange.agent_response.content
+            exchange = self.agent.chat(None, full_prompt, [], 0.6, 2000)
+            resp = exchange.agent_response.content
 
-        # print(f"**** Full prompt: {full_prompt}")
-        # print(f"**** Response: {resp}")
+            # print(f"**** Full prompt: {full_prompt}")
+            # print(f"**** Response: {resp}")
 
-        # Extract data from params_instance tag
-        soup = BeautifulSoup(resp, "html.parser")
-        params_instance = soup.find("params_instance").get_text(strip=True)
+            # Extract data from params_instance tag
+            soup = BeautifulSoup(resp, "html.parser")
+            params_instance = soup.find("params_instance").get_text(strip=True)
 
-        params_json = json.loads(params_instance)
+            params_json = json.loads(params_instance)
 
-        return params_json
+            if self.clear_memory_after_conversion:
+                self.agent.clear_memory()
+
+            return params_json
+        except Exception as e:
+            print(traceback.format_exc())
+            print(f"Error converting data {params_data}:  {e}")
+            raise e

@@ -80,6 +80,13 @@ class Agent(ABC):
         """
         pass
 
+    @abstractmethod
+    def clear_memory(self) -> None:
+        """
+        Clears the agent's memory.
+        """
+        pass
+
     @property
     @abstractmethod
     def maker(self) -> str:

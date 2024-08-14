@@ -39,7 +39,7 @@ class Ring(Link):
         console.print(
             Panel(
                 f"Processing ring {self.name}",
-                title="🪐 Ring runtime - pre-link execution 🪐",
+                title="🪐 Ring runtime - pre-link iteration 🪐",
                 title_align="left",
                 border_style="purple",
             )
@@ -47,41 +47,82 @@ class Ring(Link):
 
         for data in input_data:
             initial_data = data
-            # Run the data through all the links in the ring
-            for link in self.links:
-                if (
-                    link.category() == "TOOL_LINK"
-                    and self.agent_param_conv_link is not None
-                ):
-                    # tool_link: ToolLink = link
-                    # TODO - Find a way to set the type to ToolLink without circular imports
-                    tool_instance = link.tool()
 
-                    provider = OpenAIToolProvider(
-                        tool=tool_instance,
-                        name=tool_instance.name,
-                        description=tool_instance.description,
-                        args_schema=tool_instance.args_schema,
-                    )
-                    schema = provider.schema()
+            try:
+                # Run the data through all the links in the ring
+                for link in self.links:
 
-                    conv_data = {
-                        "input_data": data,
-                        "target_schema": schema,
-                    }
+                    # console.print(
+                    #     Panel(
+                    #         f"Invoking link {link.name} with input data: {data}",
+                    #         title="🪐 Ring runtime - pre-link execution 🪐",
+                    #         title_align="left",
+                    #         border_style="deep_sky_blue4",
+                    #     )
+                    # )
 
-                    console.print(
-                        Panel(
-                            f"Invoking tool param conversion agent link with conversion data: {conv_data}",
-                            title="🛠️ Ring runtime - tool param conversion agent 🛠️",
-                            title_align="left",
-                            border_style="purple",
+                    if (
+                        link.category() == "TOOL_LINK"
+                        and self.agent_param_conv_link is not None
+                    ):
+                        # tool_link: ToolLink = link
+                        # TODO - Find a way to set the type to ToolLink without circular imports
+                        tool_instance = link.tool()
+
+                        provider = OpenAIToolProvider(
+                            tool=tool_instance,
+                            name=tool_instance.name,
+                            description=tool_instance.description,
+                            args_schema=tool_instance.args_schema,
                         )
+                        schema = provider.schema()
+
+                        conv_data = {
+                            "input_data": data,
+                            "target_schema": schema,
+                        }
+
+                        console.print(
+                            Panel(
+                                f"Invoking tool param conversion agent link with conversion data: {conv_data}",
+                                title="🛠️ Ring runtime - tool param conversion agent 🛠️",
+                                title_align="left",
+                                border_style="purple",
+                            )
+                        )
+
+                        data = self.agent_param_conv_link.convert(conv_data)
+
+                        console.print(
+                            Panel(
+                                f"Completed tool param conversion agent link with converted data: {data}",
+                                title="🛠️ Ring runtime - tool param conversion agent 🛠️",
+                                title_align="left",
+                                border_style="medium_purple1",
+                            )
+                        )
+
+                    data = link.forward(data)
+                    if link.category() == "AGENT_LINK":
+                        console.print(
+                            Panel(
+                                f"Finished running link {link.name} with output data: {data}",
+                                title="🪐 Ring runtime - post link execution 🪐",
+                                title_align="left",
+                                border_style="dodger_blue2",
+                            )
+                        )
+            except Exception as le:
+                console.print(
+                    Panel(
+                        f"Skipping item.... Error running ring links for input data {initial_data}: {le}",
+                        title="🛠️ Ring runtime error - tool param conversion agent 🛠️",
+                        title_align="left",
+                        border_style="red",
                     )
-
-                    data = self.agent_param_conv_link.convert(conv_data)
-
-                data = link.forward(data)
+                )
+                # TODO - instead of None should we set data to some error value so that we can identify it later?
+                data = None
 
             # Now add the result at the end of the link pass to the output
             if is_dict:
