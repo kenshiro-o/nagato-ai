@@ -1,5 +1,6 @@
 from typing import List, Any, Iterable
 from collections.abc import Mapping
+import traceback
 
 from pydantic import Field
 from rich.console import Console
@@ -23,6 +24,8 @@ class Ring(Link):
         description="The link that will convert the agent parameters to the tool parameters. Set to nil if you want to manually convert the agent parameters to the tool parameters.",
     )
 
+    # TODO Create a separate internal method for running a link -> this will allow us to do retries etc.
+
     def forward(self, input_data: Iterable) -> Any:
         """
         Forward the data through the ring
@@ -38,7 +41,7 @@ class Ring(Link):
         console = Console()
         console.print(
             Panel(
-                f"Processing ring {self.name}",
+                f"Processing ring {self.name} with input data: {input_data}",
                 title="🪐 Ring runtime - pre-link iteration 🪐",
                 title_align="left",
                 border_style="purple",
@@ -107,16 +110,17 @@ class Ring(Link):
                         console.print(
                             Panel(
                                 f"Finished running link {link.name} with output data: {data}",
-                                title="🪐 Ring runtime - post link execution 🪐",
+                                title=f"🪐 Ring runtime - <{link.name}> - post link execution 🪐",
                                 title_align="left",
                                 border_style="dodger_blue2",
                             )
                         )
             except Exception as le:
+                print(traceback.format_exc())
                 console.print(
                     Panel(
                         f"Skipping item.... Error running ring links for input data {initial_data}: {le}",
-                        title="🛠️ Ring runtime error - tool param conversion agent 🛠️",
+                        title="🛠️ Ring runtime error 🛠️",
                         title_align="left",
                         border_style="red",
                     )

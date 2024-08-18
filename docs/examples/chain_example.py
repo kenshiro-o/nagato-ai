@@ -1,11 +1,7 @@
 import os
-import re
-from typing import List, Optional, Type, Dict
-from time import sleep
-from enum import Enum
+from typing import List, Dict
 import uuid
 
-from rich.console import Console
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
@@ -15,23 +11,10 @@ from nagatoai_core.chain.ring import Ring
 from nagatoai_core.chain.agent_link import AgentLink
 from nagatoai_core.chain.tool_link import ToolLink
 from nagatoai_core.chain.adapter_link import AdaptorLink
-from nagatoai_core.tool.lib.human.input import HumanInputTool
-from nagatoai_core.tool.lib.web.page_scraper import WebPageScraperTool
-from nagatoai_core.tool.lib.web.serper_search import SerperSearchTool
-from nagatoai_core.tool.lib.filesystem.text_file_reader import TextFileReaderTool
-from nagatoai_core.tool.lib.filesystem.file_checker import FileCheckerTool
-from nagatoai_core.tool.lib.time.time_offset import TimeOffsetTool
-from nagatoai_core.tool.lib.time.time_now import TimeNowTool
 from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDownloadTool
 from nagatoai_core.tool.lib.video.clip import VideoClipTool
-from nagatoai_core.tool.lib.video.details_checker import VideoCheckerTool
-from nagatoai_core.tool.lib.audio.stt.groq_whisper import GroqWhisperTool
 from nagatoai_core.tool.lib.audio.stt.assemblyai import AssemblyAITranscriptionTool
-from nagatoai_core.tool.lib.audio.stt.openai_whisper import OpenAIWhisperTool
-from nagatoai_core.tool.lib.audio.tts.openai import OpenAITTSTool
 from nagatoai_core.tool.lib.audio.video_to_mp3 import VideoToMP3Tool
-from nagatoai_core.tool.lib.audio.tts.eleven_labs import ElevenLabsTTSTool
-from nagatoai_core.tool.lib.audio.afplay import AfPlayTool
 
 
 def main():
@@ -49,8 +32,7 @@ def main():
     )
 
     input_data = {
-        # "video_id": "rgeIb0saGbY",
-        "video_id": "UakqL6Pj9xo",
+        "video_id": "<>",
         "output_path": "./",
         "file_name": "dwarkesh_chollet.mp4",
     }

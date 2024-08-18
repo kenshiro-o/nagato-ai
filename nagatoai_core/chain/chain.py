@@ -128,7 +128,7 @@ class Chain(BaseModel):
             console.print(
                 Panel(
                     f"Finished running link {link.name} with output data: {input_data}",
-                    title="🔗 Chain runtime - post link execution 🔗",
+                    title=f"🔗 Chain runtime - <{link.name}> - post link execution 🔗",
                     title_align="left",
                     border_style="green",
                 )

@@ -33,6 +33,7 @@ ffmpeg-python = "^0.2.0"
 assemblyai = "^0.28.0"
 langfuse = "^2.40.0"
 chardet = "^5.2.0"
+scrapingbee = "^2.0.1"
 
 
 [build-system]
