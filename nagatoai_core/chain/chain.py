@@ -55,6 +55,10 @@ class Chain(BaseModel):
         None,
         description="The link that will convert the agent parameters to the tool parameters. Set to nil if you want to manually convert the agent parameters to the tool parameters.",
     )
+    retries: int = Field(
+        0,
+        description="The number of retries to attempt if the a link fails",
+    )
 
     def add_link(self, link: Link):
         """
@@ -62,19 +66,22 @@ class Chain(BaseModel):
         """
         self.links.append(link)
 
-    def run(self, input_data: Any) -> Any:
+    def _run_link(
+        self, link: Link, input_data: Any, console: Console, attempt_nb: int
+    ) -> Any:
         """
-        Runs the chain. Each link within the chain will be sequentially executed.
-        :param input_data: The input data to start the chain with.
-        :return: The output data obtained after processing the input data through the whole chain.
+        Run a link with the given input data
+        :param link: The link to run
+        :param input_data: The input data to run the link with
+        :param console: The console to print messages to
+        :param attempt_nb: The number of the attempt
+        :return: The output data obtained after processing the input data through the link
         """
-        console = Console()
-
-        for link in self.links:
+        try:
             console.print(
                 Panel(
                     f"Running link {link.name} with input data: {input_data}",
-                    title="🔗 Chain runtime - pre-link execution 🔗",
+                    title=f"🔗 Chain runtime <Attempt {attempt_nb}> - pre-link execution 🔗",
                     title_align="left",
                     border_style="blue",
                 )
@@ -104,7 +111,7 @@ class Chain(BaseModel):
                 console.print(
                     Panel(
                         f"Invoking tool param conversion agent link with conversion data: {conv_data}",
-                        title="🛠️ Chain runtime - implicit tool param conversion agent 🛠️",
+                        title=f"🛠️ Chain runtime <Attempt {attempt_nb}> - implicit tool param conversion agent 🛠️",
                         title_align="left",
                         border_style="orange_red1",
                     )
@@ -117,7 +124,7 @@ class Chain(BaseModel):
                 console.print(
                     Panel(
                         f"Running link {link.name} with converted input data: {input_data}",
-                        title="🔗 Chain runtime - post data conversion 🔗",
+                        title=f"🔗 Chain runtime <Attempt {attempt_nb}> - post data conversion 🔗",
                         title_align="left",
                         border_style="blue",
                     )
@@ -128,10 +135,40 @@ class Chain(BaseModel):
             console.print(
                 Panel(
                     f"Finished running link {link.name} with output data: {input_data}",
-                    title=f"🔗 Chain runtime - <{link.name}> - post link execution 🔗",
+                    title=f"🔗 Chain runtime <Attempt {attempt_nb}> - <{link.name}> - post link execution 🔗",
                     title_align="left",
                     border_style="green",
                 )
             )
+
+            return input_data
+        except Exception as e:
+            console.print(
+                Panel(
+                    f"An error occurred while running link {link.name}: {e}",
+                    title=f"🚨 Chain runtime <Attempt {attempt_nb}> - error",
+                    title_align="left",
+                    border_style="red",
+                )
+            )
+            raise e
+
+    def run(self, input_data: Any) -> Any:
+        """
+        Runs the chain. Each link within the chain will be sequentially executed.
+        :param input_data: The input data to start the chain with.
+        :return: The output data obtained after processing the input data through the whole chain.
+        """
+        console = Console()
+
+        tries = self.retries + 1
+        for link in self.links:
+            for i in range(tries):
+                try:
+                    input_data = self._run_link(link, input_data, console, i + 1)
+                    break
+                except Exception as e:
+                    if i == tries - 1:
+                        raise e
 
         return input_data
