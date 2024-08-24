@@ -19,14 +19,26 @@ Note that from now on I will use the terms _Nagato_ and *Nagato-AI* interchangib
 
 # How to use Nagato-AI
 
-## Installing Poetry dependency management
+## Installation
 
-First, ensure that you have [poetry](https://python-poetry.org/) packaging/dependency management installed on your machine.
+### Working directly with source reposirory
+
+If you're working on the source repository (either via a fork or the original repository), you must ensure that you have [poetry](https://python-poetry.org/) packaging/dependency management installed on your machine.
 Once poetry is installed, then simply run the following command in your termninal (from the root folder of nagato code base) to install all required dependencies:
 
 ```
 poetry install
 ```
+
+### Installing via pip
+
+Simply run the command:
+
+```
+pip install nagatoai_core
+```
+
+That's it! Nagato AI available to use in your code.
 
 ### Configuring environment variables
 

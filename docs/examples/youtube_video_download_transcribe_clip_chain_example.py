@@ -32,7 +32,7 @@ def main():
     )
 
     input_data = {
-        "video_id": "<>",
+        "video_id": "UakqL6Pj9xo",
         "output_path": "./",
         "file_name": "dwarkesh_chollet.mp4",
     }

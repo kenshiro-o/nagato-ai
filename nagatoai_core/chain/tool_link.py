@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from typing import List, Union, Dict, Any, Optional, Type
 
 from nagatoai_core.chain.chain import Link
@@ -10,6 +9,7 @@ class ToolLink(Link):
     ToolLink represents a link that executes a tool.
     """
 
+    partial_tool_args: Optional[Dict[str, Any]] = None
     tool: Type[AbstractTool]
 
     class Config:
@@ -23,6 +23,18 @@ class ToolLink(Link):
         """
         tool_instance = self.tool()
         tool_args_schema = tool_instance.args_schema
+
+        # Merge the partial tool args with the input data
+        if self.partial_tool_args is not None:
+            print(
+                f"Merging partial tool args: {self.partial_tool_args} with input data: {input_data}"
+            )
+            input_data = {
+                **input_data,
+                **self.partial_tool_args,
+            }
+            print(f"Merged input data: {input_data}")
+
         tool_params = tool_args_schema(**input_data)
 
         return tool_instance._run(tool_params)
