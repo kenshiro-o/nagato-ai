@@ -80,8 +80,8 @@ class VideoToMP3Tool(AbstractTool):
 
             return {
                 "status": "success",
-                "input_file": os.path.basename(config.input_path),
-                "output_file": os.path.basename(config.output_path),
+                "input_file": config.input_path,
+                "output_file": config.output_path,
                 "sampling_rate": config.sampling_rate,
                 "duration": float(probe["format"]["duration"]),
                 "file_size_bytes": int(probe["format"]["size"]),

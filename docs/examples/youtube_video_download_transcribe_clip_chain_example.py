@@ -15,6 +15,7 @@ from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDown
 from nagatoai_core.tool.lib.video.clip import VideoClipTool
 from nagatoai_core.tool.lib.audio.stt.assemblyai import AssemblyAITranscriptionTool
 from nagatoai_core.tool.lib.audio.video_to_mp3 import VideoToMP3Tool
+from nagatoai_core.prompt.template.prompt_template import PromptTemplate
 
 
 def main():
@@ -31,37 +32,38 @@ def main():
         tool=YouTubeVideoDownloadTool,
     )
 
+    video_name = "pieter_levels_fridman.mp4"
     input_data = {
-        "video_id": "UakqL6Pj9xo",
-        "output_path": "./",
-        "file_name": "dwarkesh_chollet.mp4",
+        "video_id": "oFtjKbXKqbg",
+        "output_path": "./media/",
+        "file_name": video_name,
     }
 
-    def v2mp3_param_conv(video_path: str) -> Dict:
-        """
-        Convert video path input into Dict for video to mp3 tool
-        """
-        return {"input_path": video_path, "output_path": "video_audio.mp3"}
+    # def v2mp3_param_conv(video_path: str) -> Dict:
+    #     """
+    #     Convert video path input into Dict for video to mp3 tool
+    #     """
+    #     return {"input_path": video_path, "output_path": "video_audio.mp3"}
 
-    ad_link = AdaptorLink(
-        name="Video to MP3 Adapter",
-        adapter_fn=v2mp3_param_conv,
-    )
+    # ad_link = AdaptorLink(
+    #     name="Video to MP3 Adapter",
+    #     adapter_fn=v2mp3_param_conv,
+    # )
 
     audio_extr_link = ToolLink(
         id=str(uuid.uuid4()), name="Audio Extraction", tool=VideoToMP3Tool
     )
 
-    def transcribe_param_conv(audio_data: Dict) -> Dict:
-        """
-        Convert audio path input into Dict for transcription tool
-        """
-        return {"file_path": audio_data["output_file"]}
+    # def transcribe_param_conv(audio_data: Dict) -> Dict:
+    #     """
+    #     Convert audio path input into Dict for transcription tool
+    #     """
+    #     return {"file_path": audio_data["output_file"]}
 
-    transcribe_adapter = AdaptorLink(
-        name="Transcription Adapter",
-        adapter_fn=transcribe_param_conv,
-    )
+    # transcribe_adapter = AdaptorLink(
+    #     name="Transcription Adapter",
+    #     adapter_fn=transcribe_param_conv,
+    # )
 
     # transcribe_link = ToolLink(
     #     id=str(uuid.uuid4()),
@@ -85,41 +87,61 @@ def main():
         "Worker",
     )
 
-    wa_prompt = """Analyse the following transcript and identify the most important parts.
-    Please return the key soundbites and the most important points in the following format.
-    ---
-    <key_moments>
-        <key_moment>
-            <transcript></transcript>
-            <from_timestamp></from_timestamp>
-            <to_timestamp></to_timestamp>
-        </key_moment>
-    </key_moments>
-    ---
-    Regarding the important points in the video, I would like you to focus on extracting contiguous sentences that cover these points:
-    - what is the ARC challenges
-    - why LLMs have not been able to solve the ARC challenge puzzles so far
-    - what is the key insight that the LLMs are missing
+    wa_prompt_template = PromptTemplate(
+        template="""
+        You are tasked with analyzing a transcript and identifying the most important parts. Your goal is to extract key soundbites and the most important points from the given transcript. Follow these instructions carefully:
 
-    Feel free to add any further extracts that you think are important to the analysis.
+        1. Review the following transcript sentences:
+        <transcript_sentences>
+        {sentences}
+        </transcript_sentences>
 
-    Put the text verbatim from the transcript inside the <transcript> tag.
-    Put the start timestamp inside the <from_timestamp> tag and the end timestamp inside the <to_timestamp> tag.
+        2. You will present your analysis in the following format:
+        <key_moments>
+            <key_moment>
+                <transcript></transcript>
+                <from_timestamp></from_timestamp>
+                <to_timestamp></to_timestamp>
+            </key_moment>
+        </key_moments>
 
-    The soundbites can be composed of multiple contiguous sentences, and should ideally be shorter than 60 seconds.
+        3. Focus on extracting sentences that cover one or more of these points:
+        - How to be productive as an indie hacker
+        - What projects to work on
+        - How to spot trends
+        - How to build successful startups
+        - How to use AI
+        - Advice for entrepreneurs
 
-    Analyse the transcript below:
-    """
+        4. You may also include any other sentences that you deem important for the analysis.
 
-    ag_link = AgentLink(
+        5. When selecting key moments:
+        a. Copy the selected sentences verbatim from the transcript and place them inside the <transcript> tags.
+        b. Put the start timestamp inside the <from_timestamp> tags.
+        c. Put the end timestamp inside the <to_timestamp> tags.
+
+        6. Guidelines for soundbites:
+        - Soundbites can be composed of multiple contiguous sentences.
+        - Aim for soundbites that are at most 90 seconds long.
+
+        7. Present your final output as a series of <key_moment> entries, each containing the transcript, from_timestamp, and to_timestamp tags.
+
+        Remember to carefully analyze the transcript and select the most relevant and impactful moments that align with the specified topics. Ensure that your chosen soundbites provide valuable insights and advice related to indie hacking, entrepreneurship, and startup success.
+        """,
+        data_light_schema={},
+    )
+
+    agent_soundbite_extractor_link = AgentLink(
         agent=worker_agent,
-        input_prompt=wa_prompt,
+        input_prompt_template=wa_prompt_template,
     )
 
     def extract_key_moments_adapter(llm_output: str) -> List[Dict]:
         """
         Extract key moments from the transcript
         """
+        print(f"Extracting key moments from transcript: {llm_output}")
+
         soup = BeautifulSoup(llm_output, "html.parser")
         key_moments = soup.find_all("key_moment")
         key_moments_list = []
@@ -132,7 +154,7 @@ def main():
                     # "transcript": tr,
                     "from_timestamp": from_ts,
                     "to_timestamp": to_ts,
-                    "full_path": "./dwarkesh_chollet.mp4",
+                    "full_path": f"./media/{video_name}",
                     "output_path_prefix": f"clip_",
                     "output_path_suffix": f"_{from_ts}s_{to_ts}s",
                 }
@@ -145,7 +167,7 @@ def main():
         adapter_fn=extract_key_moments_adapter,
     )
 
-    def utterances_adapter(transcribe_output: Dict) -> Dict:
+    def utterances_adapter_fn(transcribe_output: Dict) -> Dict:
         """
         Convert utterances into a Dict for the Ring tool
         """
@@ -155,9 +177,9 @@ def main():
             "file_name": transcribe_output["file_name"],
         }
 
-    ut_adaptor = AdaptorLink(
-        name="Utterances Adapter",
-        adapter_fn=utterances_adapter,
+    utterances_adaptor = AdaptorLink(
+        name="Utterances Adaptor",
+        adapter_fn=utterances_adapter_fn,
     )
 
     rg_video_clip_link = ToolLink(
@@ -201,8 +223,8 @@ def main():
             yt_tool_link,
             audio_extr_link,
             transcribe_link,
-            ut_adaptor,
-            ag_link,
+            utterances_adaptor,
+            agent_soundbite_extractor_link,
             km_adapter,
             rg,
         ],

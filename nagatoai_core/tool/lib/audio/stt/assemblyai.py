@@ -1,5 +1,7 @@
 import os
 from typing import Type
+import time
+
 from pydantic import Field, BaseModel
 from pydantic_settings import BaseSettings
 import assemblyai as aai
@@ -72,6 +74,13 @@ class AssemblyAITranscriptionTool(AbstractTool):
             transcript = transcriber.transcribe(
                 config.media_full_path, config=transcript_config
             )
+
+            transcript.wait_for_completion()
+
+            if transcript.status == "error":
+                raise RuntimeError(
+                    f"Error transcribing audio/video file: {transcript.error}"
+                )
 
             # Prepare the result
             result = {

@@ -20,7 +20,7 @@ class AgentLink(Link):
 
     class Config:
         arbitrary_types_allowed = True
-        extra = "allow"
+        # extra = "allow"
 
     def forward(self, input_data: Dict) -> Any:
         """
@@ -32,6 +32,8 @@ class AgentLink(Link):
 
         if self.input_prompt_template:
             final_prompt = self.input_prompt_template.generate_prompt(input_data)
+        # print(f"***Input data keys is: {input_data.keys()}")
+        # print(f"****Final Prompt: {final_prompt}")
 
         exchange = self.agent.chat(
             None,
@@ -43,6 +45,8 @@ class AgentLink(Link):
 
         if self.clear_memory_after_chat:
             self.agent.clear_memory()
+
+        # print(f"****Agent Response: {exchange.agent_response.content}")
 
         return exchange.agent_response.content
 
