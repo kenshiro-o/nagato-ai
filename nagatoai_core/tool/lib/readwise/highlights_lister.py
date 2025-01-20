@@ -1,12 +1,16 @@
-from typing import Any, Type, List, Optional
-
-from pydantic import BaseModel, Field
+# Standard Library
 from datetime import datetime, timedelta
-from dateutil.parser import parse
-import requests
+from typing import Any, List, Optional, Type
 
+# Third Party
+import requests
+from dateutil.parser import parse
+from pydantic import BaseModel, Field
+
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
-from .base_config import BaseReadwiseConfig, READWISE_API_URL
+
+from .base_config import READWISE_API_URL, BaseReadwiseConfig
 
 
 class ReadwiseHighightsListerConfig(BaseReadwiseConfig, BaseModel):

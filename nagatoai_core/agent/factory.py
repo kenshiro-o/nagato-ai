@@ -1,19 +1,24 @@
+# Standard Library
 from typing import Type
 
-from openai import OpenAI
+# Third Party
+import google.generativeai as genai
 from anthropic import Anthropic
 from groq import Groq
-import google.generativeai as genai
+from openai import OpenAI
 
-from .agent import Agent
-from .openai import OpenAIAgent
-from .groq import GroqAgent
-from .anthropic import AnthropicAgent
-from .google import GoogleAgent
+# Company Libraries
+from nagatoai_core.agent.deepseek import DeepSeekAgent
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 from nagatoai_core.tool.provider.anthropic import AnthropicToolProvider
-from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 from nagatoai_core.tool.provider.google import GoogleToolProvider
+from nagatoai_core.tool.provider.openai import OpenAIToolProvider
+
+from .agent import Agent
+from .anthropic import AnthropicAgent
+from .google import GoogleAgent
+from .groq import GroqAgent
+from .openai import OpenAIAgent
 
 
 def create_agent(
@@ -28,9 +33,13 @@ def create_agent(
     :param nickname: The nickname of the agent.
     :return: The agent instance.
     """
-    if model.startswith("gpt"):
+    if model.startswith("gpt") or model.startswith("o1"):
         client = OpenAI(api_key=api_key)
         return OpenAIAgent(client, model, role, role_description, nickname)
+
+    if model.startswith("deepseek"):
+        client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+        return DeepSeekAgent(client, model, role, role_description, nickname)
 
     if model.startswith("claude"):
         client = Anthropic(api_key=api_key)
@@ -55,6 +64,9 @@ def get_agent_tool_provider(agent: Agent) -> Type[AbstractToolProvider]:
     :return: The tool provider for the agent.
     """
     if isinstance(agent, OpenAIAgent):
+        return OpenAIToolProvider
+
+    if isinstance(agent, DeepSeekAgent):
         return OpenAIToolProvider
 
     if isinstance(agent, GroqAgent):

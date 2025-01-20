@@ -1,10 +1,13 @@
-from typing import Type, Dict
-from pydantic import Field, BaseModel
+# Standard Library
+from typing import Dict, Type
 
+# Third Party
+from bs4 import BeautifulSoup, Comment
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 from scrapingbee import ScrapingBeeClient
-from bs4 import BeautifulSoup, Comment
 
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
 

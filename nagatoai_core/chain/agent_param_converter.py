@@ -1,10 +1,13 @@
-from typing import Any, Dict
+# Standard Library
 import json
 import traceback
+from typing import Any, Dict
 
-from pydantic import BaseModel
+# Third Party
 from bs4 import BeautifulSoup
+from pydantic import BaseModel
 
+# Company Libraries
 from nagatoai_core.agent.agent import Agent
 
 

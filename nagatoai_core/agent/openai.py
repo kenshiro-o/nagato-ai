@@ -1,21 +1,25 @@
-from typing import List, Optional
+# Standard Library
 import json
+from datetime import datetime, timezone
+from typing import List, Optional
 
+# Third Party
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
-from datetime import datetime, timezone
+
+# Company Libraries
+from nagatoai_core.mission.task import Task
+from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 
 from .agent import Agent
 from .message import (
-    Sender,
-    Message,
     Exchange,
-    ToolResult,
-    ToolCall,
+    Message,
+    Sender,
     TokenStatsAndParams,
+    ToolCall,
+    ToolResult,
 )
-from nagatoai_core.mission.task import Task
-from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 
 
 def extract_openai_model_family(model: str) -> str:
@@ -31,6 +35,7 @@ def extract_openai_model_family(model: str) -> str:
         "curie",
         "babbage",
         "ada",
+        "o1",
     ]
     for prefix in family_prefixes:
         if model.startswith(prefix):
@@ -150,7 +155,7 @@ class OpenAIAgent(Agent):
             ),
             token_stats_and_params=TokenStatsAndParams(
                 input_tokens_used=response.usage.prompt_tokens,
-                ouput_tokens_used=response.usage.completion_tokens,
+                output_tokens_used=response.usage.completion_tokens,
                 max_tokens=max_tokens,
                 temperature=temperature,
             ),
@@ -218,7 +223,7 @@ class OpenAIAgent(Agent):
             ),
             token_stats_and_params=TokenStatsAndParams(
                 input_tokens_used=response.usage.prompt_tokens,
-                ouput_tokens_used=response.usage.completion_tokens,
+                output_tokens_used=response.usage.completion_tokens,
                 max_tokens=max_tokens,
                 temperature=temperature,
             ),

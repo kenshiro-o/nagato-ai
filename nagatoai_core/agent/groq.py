@@ -1,23 +1,18 @@
-from typing import List, Optional
+# Standard Library
 import json
+from datetime import datetime, timezone
+from typing import List, Optional
 
+# Third Party
 from groq import Groq
 from groq.types.chat import ChatCompletion
-from datetime import datetime, timezone
+
+# Company Libraries
+from nagatoai_core.mission.task import Task
+from nagatoai_core.tool.provider.openai import OpenAIToolProvider  # Groq tool calling mechanism is similar to OpenAI's
 
 from .agent import Agent
-from .message import (
-    Sender,
-    Message,
-    Exchange,
-    ToolResult,
-    ToolCall,
-    TokenStatsAndParams,
-)
-from nagatoai_core.mission.task import Task
-from nagatoai_core.tool.provider.openai import (
-    OpenAIToolProvider,
-)  # Groq tool calling mechanism is similar to OpenAI's
+from .message import Exchange, Message, Sender, TokenStatsAndParams, ToolCall, ToolResult
 
 
 def extract_groq_model_family(model: str) -> str:

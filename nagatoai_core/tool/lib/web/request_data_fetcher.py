@@ -1,8 +1,12 @@
-import requests
+# Standard Library
 import json
 from typing import Any, Dict, Optional, Type, Union
+
+# Third Party
+import requests
 from pydantic import BaseModel, Field
 
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
 

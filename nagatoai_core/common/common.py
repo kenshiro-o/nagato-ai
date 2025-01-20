@@ -1,9 +1,12 @@
+# Standard Library
 from typing import List, Optional
 
+# Third Party
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn
 
+# Company Libraries
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.agent.message import Exchange
 from nagatoai_core.mission.task import Task

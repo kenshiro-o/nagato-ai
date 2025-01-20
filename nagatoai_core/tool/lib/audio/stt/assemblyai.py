@@ -1,11 +1,14 @@
+# Standard Library
 import os
-from typing import Type
 import time
+from typing import Type
 
-from pydantic import Field, BaseModel
-from pydantic_settings import BaseSettings
+# Third Party
 import assemblyai as aai
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings
 
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
 

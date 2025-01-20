@@ -1,5 +1,7 @@
-from typing import List, Union, Dict, Any, Optional, Type
+# Standard Library
+from typing import Any, Dict, List, Optional, Type, Union
 
+# Company Libraries
 from nagatoai_core.chain.chain import Link
 from nagatoai_core.tool.abstract_tool import AbstractTool
 

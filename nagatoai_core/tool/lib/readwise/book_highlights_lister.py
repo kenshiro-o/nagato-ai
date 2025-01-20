@@ -1,10 +1,14 @@
+# Standard Library
 from typing import Any, Type
 
-from pydantic import BaseModel, Field
+# Third Party
 import requests
+from pydantic import BaseModel, Field
 
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
-from .base_config import BaseReadwiseConfig, READWISE_API_URL
+
+from .base_config import READWISE_API_URL, BaseReadwiseConfig
 
 
 class ReadwiseBookHighlightsListerConfig(BaseReadwiseConfig, BaseModel):

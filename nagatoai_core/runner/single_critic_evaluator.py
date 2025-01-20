@@ -1,17 +1,18 @@
-from typing import List, Dict
-from rich.console import Console
+# Standard Library
+from typing import Dict, List
+
+# Third Party
 from bs4 import BeautifulSoup
-
 from langfuse import Langfuse
+from rich.console import Console
 
-from nagatoai_core.mission.task import Task, TaskResult, TaskOutcome
-from nagatoai_core.agent.message import Exchange
+# Company Libraries
 from nagatoai_core.agent.agent import Agent
-from nagatoai_core.runner.task_evaluator import TaskEvaluator
-from nagatoai_core.prompt.templates import (
-    CRITIC_PROMPT,
-)
+from nagatoai_core.agent.message import Exchange
 from nagatoai_core.common.common import print_exchange, send_agent_request
+from nagatoai_core.mission.task import Task, TaskOutcome, TaskResult
+from nagatoai_core.prompt.templates import CRITIC_PROMPT
+from nagatoai_core.runner.task_evaluator import TaskEvaluator
 
 DEFAULT_CRITIC_TEMPERATURE = 0.6
 

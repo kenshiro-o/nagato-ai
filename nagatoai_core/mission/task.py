@@ -1,8 +1,10 @@
-from enum import Enum
-from typing import Union, Optional, List
-from datetime import datetime
+# Standard Library
 import uuid
+from datetime import datetime
+from enum import Enum
+from typing import List, Optional, Union
 
+# Third Party
 from pydantic import BaseModel
 
 

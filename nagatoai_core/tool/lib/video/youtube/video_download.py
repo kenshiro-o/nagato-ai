@@ -1,23 +1,31 @@
-from typing import Type
+# Standard Library
 import os
 import re
+from typing import Type
 
-from pydantic import Field, BaseModel
+# Third Party
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
-from pytube import YouTube
-from pytube.innertube import _default_clients
-from pytube import cipher
-from pytube.exceptions import RegexMatchError
+from pytubefix import YouTube
+from pytubefix.cli import on_progress
 
-
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
-_default_clients["ANDROID"]["context"]["client"]["clientVersion"] = "19.08.35"
-_default_clients["IOS"]["context"]["client"]["clientVersion"] = "19.08.35"
-_default_clients["ANDROID_EMBED"]["context"]["client"]["clientVersion"] = "19.08.35"
-_default_clients["IOS_EMBED"]["context"]["client"]["clientVersion"] = "19.08.35"
-_default_clients["IOS_MUSIC"]["context"]["client"]["clientVersion"] = "6.41"
-_default_clients["ANDROID_MUSIC"] = _default_clients["ANDROID_CREATOR"]
+# from pytube import YouTube
+# from pytube.innertube import _default_clients
+# from pytube import cipher
+# from pytube.exceptions import RegexMatchError
+
+
+
+
+# _default_clients["ANDROID"]["context"]["client"]["clientVersion"] = "19.08.35"
+# _default_clients["IOS"]["context"]["client"]["clientVersion"] = "19.08.35"
+# _default_clients["ANDROID_EMBED"]["context"]["client"]["clientVersion"] = "19.08.35"
+# _default_clients["IOS_EMBED"]["context"]["client"]["clientVersion"] = "19.08.35"
+# _default_clients["IOS_MUSIC"]["context"]["client"]["clientVersion"] = "6.41"
+# _default_clients["ANDROID_MUSIC"] = _default_clients["ANDROID_CREATOR"]
 
 
 def get_throttling_function_name(js: str) -> str:
@@ -56,10 +64,11 @@ def get_throttling_function_name(js: str) -> str:
                     array = [x.strip() for x in array]
                     return array[int(idx)]
 
-    raise RegexMatchError(caller="get_throttling_function_name", pattern="multiple")
+    # raise RegexMatchError(caller="get_throttling_function_name", pattern="multiple")
+    raise RuntimeError("Failed to find throttling function name")
 
 
-cipher.get_throttling_function_name = get_throttling_function_name
+# cipher.get_throttling_function_name = get_throttling_function_name
 
 
 class YouTubeVideoDownloadConfig(BaseSettings, BaseModel):

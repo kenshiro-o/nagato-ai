@@ -1,23 +1,20 @@
-from typing import List, Optional, Dict
+# Standard Library
 import json
-
-import google.generativeai as genai
-import google.ai.generativelanguage as glm
-from google.protobuf.struct_pb2 import Struct
-from google.protobuf.json_format import MessageToDict
 from datetime import datetime, timezone
+from typing import Dict, List, Optional
 
-from .agent import Agent
-from .message import (
-    Sender,
-    Message,
-    Exchange,
-    ToolResult,
-    ToolCall,
-    TokenStatsAndParams,
-)
+# Third Party
+import google.ai.generativelanguage as glm
+import google.generativeai as genai
+from google.protobuf.json_format import MessageToDict
+from google.protobuf.struct_pb2 import Struct
+
+# Company Libraries
 from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.google import GoogleToolProvider
+
+from .agent import Agent
+from .message import Exchange, Message, Sender, TokenStatsAndParams, ToolCall, ToolResult
 
 
 def extract_google_model_family(model: str) -> str:

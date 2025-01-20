@@ -1,7 +1,9 @@
-from typing import Dict, Any, Optional
+# Standard Library
+from typing import Any, Dict, Optional
 
-from nagatoai_core.chain.chain import Link
+# Company Libraries
 from nagatoai_core.agent.agent import Agent
+from nagatoai_core.chain.chain import Link
 from nagatoai_core.prompt.template.prompt_template import PromptTemplate
 
 
@@ -11,8 +13,8 @@ class AgentLink(Link):
     """
 
     agent: Agent
-    temperature: float = 0.6
-    max_tokens: int = 2000
+    temperature: float = 0.61
+    max_tokens: int = 8192
     input_prompt: Optional[str] = None
     input_prompt_template: Optional[PromptTemplate] = None
     clear_memory_after_chat: bool = True

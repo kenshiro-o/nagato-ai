@@ -1,26 +1,23 @@
-from typing import Union, Optional, List, Dict, Type
+# Standard Library
 from datetime import datetime, timezone
+from typing import Dict, List, Optional, Type, Union
 
-from rich.console import Console
+# Third Party
 from langfuse import Langfuse
+from rich.console import Console
 
-from nagatoai_core.runner.task_runner import TaskRunner
-from nagatoai_core.mission.task import Task
-from nagatoai_core.agent.message import (
-    Exchange,
-    ToolResult,
-    ToolRun,
-    ToolCall,
-)  # Added ToolCall here
-from nagatoai_core.mission.task import TaskResult, TaskOutcome
-from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
+# Company Libraries
+from nagatoai_core.agent.agent import Agent  # Import the Agent class
+from nagatoai_core.agent.message import Exchange, ToolCall, ToolResult, ToolRun  # Added ToolCall here
+from nagatoai_core.common.common import print_exchange, send_agent_request
+from nagatoai_core.mission.task import Task, TaskOutcome, TaskResult
 from nagatoai_core.prompt.templates import (
-    RESEARCHER_TASK_PROMPT_WITH_EXAMPLE,
     RESEARCHER_TASK_PROMPT_NO_EXAMPLE,
+    RESEARCHER_TASK_PROMPT_WITH_EXAMPLE,
     RESEARCHER_TASK_PROMPT_WITH_PREVIOUS_UNSATISFACTORY_TASK_RESULT,
 )
-from nagatoai_core.common.common import send_agent_request, print_exchange
-from nagatoai_core.agent.agent import Agent  # Import the Agent class
+from nagatoai_core.runner.task_runner import TaskRunner
+from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 
 DEFAULT_AGENT_TEMPERATURE = 0.6
 
