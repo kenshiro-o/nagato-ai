@@ -1,0 +1,52 @@
+name: Nagato AI CI/CD
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v[0-9]+\.[0-9]+\.[0-9]+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+  checks: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+            python-version: '3.12'
+            architecture: 'x64'
+
+      - name: cache poetry version
+        id: cached-poetry
+        uses: actions/cache@v2
+        with:
+          path: ~/.local
+          key: poetry-1.8.3-0
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        if: steps.cached-poetry.outputs.cache-hit != 'true'
+        with:
+          version: 1.8.3
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      # Install dependencies from poetry
+      - run: make install-ci
+
+      # Run linter - and fail if score if below a certain threshold
+      # TODO: Uncomment when we have a linter threshold
+      # - run: make lint-ci
+
+      # Run tests
+      - run: make test
