@@ -37,7 +37,7 @@ install:
 
 .PHONY: install-ci
 install-ci:
-	$(POETRY) install --no-interaction --no-root
+	$(POETRY) install --no-interaction
 
 .PHONY: test
 test:
