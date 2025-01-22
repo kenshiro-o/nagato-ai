@@ -7,6 +7,7 @@ import requests
 from dateutil.parser import parse
 from pydantic import BaseModel, Field
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
@@ -51,9 +52,7 @@ class ReadwiseHighightsListerTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = ReadwiseHighightsListerConfig
 
-    def get_highlights(
-        self, config: ReadwiseHighightsListerConfig, url: str, page_size: int
-    ) -> Any:
+    def get_highlights(self, config: ReadwiseHighightsListerConfig, url: str, page_size: int) -> Any:
         """
         Get all highlights from Readwise
         :return: The result of the list operation.
@@ -87,9 +86,7 @@ class ReadwiseHighightsListerTool(AbstractTool):
         :return: The result of the list operation.
         """
         page_size = 50
-        response = self.get_highlights(
-            config, f"{READWISE_API_URL}/highlights/", page_size
-        )
+        response = self.get_highlights(config, f"{READWISE_API_URL}/highlights/", page_size)
         current_count = 0
 
         highlights = []
@@ -99,9 +96,7 @@ class ReadwiseHighightsListerTool(AbstractTool):
 
             for highlight in results:
                 highlight_tag_names = [tag["name"] for tag in highlight["tags"]]
-                if config.tags and not any(
-                    tag in highlight_tag_names for tag in config.tags
-                ):
+                if config.tags and not any(tag in highlight_tag_names for tag in config.tags):
                     continue
 
                 highlights.append(highlight)

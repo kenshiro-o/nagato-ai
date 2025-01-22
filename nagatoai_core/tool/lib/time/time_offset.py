@@ -6,6 +6,7 @@ from typing import Any, Optional, Type
 from dateutil.parser import parse as parse_date
 from pydantic import BaseModel, Field
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
@@ -62,9 +63,7 @@ class TimeOffsetTool(AbstractTool):
         :param config: The configuration for the tool.
         :return: The datetime in ISO format after applying the offset.
         """
-        ref_dt = (
-            datetime.utcnow() if not config.base_time else parse_date(config.base_time)
-        )
+        ref_dt = datetime.utcnow() if not config.base_time else parse_date(config.base_time)
 
         offset = timedelta(
             days=config.days,

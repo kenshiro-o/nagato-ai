@@ -6,11 +6,9 @@ from typing import List, Optional
 import pytest
 from pydantic import BaseModel, Field
 
+# Nagato AI
 # Company Libraries
-from nagatoai_core.tool.abstract_tool import (
-    AbstractTool,
-    TOOL_METADATA_EXCLUDE_FROM_SCHEMA,
-)
+from nagatoai_core.tool.abstract_tool import TOOL_METADATA_EXCLUDE_FROM_SCHEMA, AbstractTool
 from nagatoai_core.tool.provider.anthropic import AnthropicToolProvider
 
 
@@ -36,9 +34,7 @@ class ToolFixture(AbstractTool):
 
 @pytest.fixture
 def tool_provider():
-    tool = ToolFixture(
-        name="test_tool", description="A test tool", args_schema=InputSchemaFixture
-    )
+    tool = ToolFixture(name="test_tool", description="A test tool", args_schema=InputSchemaFixture)
     return AnthropicToolProvider(
         tool=tool,
         name=tool.name,

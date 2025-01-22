@@ -6,6 +6,7 @@ from typing import List, Optional
 # Third Party
 from anthropic import Client
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.anthropic import AnthropicToolProvider
@@ -117,9 +118,7 @@ class AnthropicAgent(Agent):
 
         exchange = Exchange(
             chat_history=messages,
-            user_msg=Message(
-                sender=Sender.USER, content=prompt, created_at=msg_send_time
-            ),
+            user_msg=Message(sender=Sender.USER, content=prompt, created_at=msg_send_time),
             agent_response=Message(
                 sender=Sender.AGENT,
                 content=response_text,
@@ -161,9 +160,7 @@ class AnthropicAgent(Agent):
             # Use string representation of the result - if it is a complex object, it will be using JSON dumps
             result_str = ""
             # If tool result is a dictionary or list, we will use JSON dumps to convert it to a string
-            if isinstance(tool_result.result, dict) or isinstance(
-                tool_result.result, list
-            ):
+            if isinstance(tool_result.result, dict) or isinstance(tool_result.result, list):
                 result_str = json.dumps(tool_result.result)
             else:
                 result_str = str(tool_result.result)

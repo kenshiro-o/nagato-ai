@@ -92,6 +92,4 @@ class Task(BaseModel):
         return self.status == TaskStatus.COMPLETED
 
     def __str__(self):
-        return (
-            f"Goal={self.goal} | Description={self.description} | Status={self.status}"
-        )
+        return f"Goal={self.goal} | Description={self.description} | Status={self.status}"

@@ -7,6 +7,7 @@ import ffmpeg
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
@@ -64,9 +65,7 @@ class VideoToMP3Tool(AbstractTool):
             # Perform the conversion
             (
                 ffmpeg.input(config.input_path)
-                .output(
-                    config.output_path, acodec="libmp3lame", ar=config.sampling_rate
-                )
+                .output(config.output_path, acodec="libmp3lame", ar=config.sampling_rate)
                 .overwrite_output()
                 .run(capture_stdout=True, capture_stderr=True)
             )
@@ -74,11 +73,7 @@ class VideoToMP3Tool(AbstractTool):
             # Get information about the output file
             probe = ffmpeg.probe(config.output_path)
             audio_stream = next(
-                (
-                    stream
-                    for stream in probe["streams"]
-                    if stream["codec_type"] == "audio"
-                ),
+                (stream for stream in probe["streams"] if stream["codec_type"] == "audio"),
                 None,
             )
 
@@ -89,9 +84,7 @@ class VideoToMP3Tool(AbstractTool):
                 "sampling_rate": config.sampling_rate,
                 "duration": float(probe["format"]["duration"]),
                 "file_size_bytes": int(probe["format"]["size"]),
-                "audio_codec": (
-                    audio_stream["codec_name"] if audio_stream else "Unknown"
-                ),
+                "audio_codec": (audio_stream["codec_name"] if audio_stream else "Unknown"),
                 "channels": audio_stream["channels"] if audio_stream else "Unknown",
             }
 

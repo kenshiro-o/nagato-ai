@@ -7,6 +7,7 @@ from anthropic import Anthropic
 from groq import Groq
 from openai import OpenAI
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.agent.deepseek import DeepSeekAgent
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
@@ -21,9 +22,7 @@ from .groq import GroqAgent
 from .openai import OpenAIAgent
 
 
-def create_agent(
-    api_key: str, model: str, role: str, role_description: str, nickname: str
-) -> Agent:
+def create_agent(api_key: str, model: str, role: str, role_description: str, nickname: str) -> Agent:
     """
     Creates an agent based on the model, role, role_description and nickname.
     :param api_key: The API key to be used by the agent.

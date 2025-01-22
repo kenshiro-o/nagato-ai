@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from langfuse import Langfuse
 from rich.console import Console
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.agent.message import Exchange
@@ -29,9 +30,7 @@ class SingleCriticEvaluator(TaskEvaluator):
 
         self.langfuse = None if not self.tracing_enabled else Langfuse()
 
-    def evaluate(
-        self, task: Task, agents: Dict[str, Agent], exchanges: List[Exchange]
-    ) -> TaskResult:
+    def evaluate(self, task: Task, agents: Dict[str, Agent], exchanges: List[Exchange]) -> TaskResult:
         """
         Evaluates the task
         """
@@ -48,12 +47,8 @@ class SingleCriticEvaluator(TaskEvaluator):
         # Construct critic prompt input containing all answers from exchanges of the current task
         for _, exchange in enumerate(exchanges):
             if exchange.user_msg.tool_results:
-                task_result_str += (
-                    "\n" + str(exchange.user_msg.tool_results[-1].result) + "\n\n"
-                )
-                task_result_str += (
-                    "\n\n---\n" + exchange.agent_response.content + "\n\n"
-                )
+                task_result_str += "\n" + str(exchange.user_msg.tool_results[-1].result) + "\n\n"
+                task_result_str += "\n\n---\n" + exchange.agent_response.content + "\n\n"
             else:
                 soup = BeautifulSoup(exchange.agent_response.content, "html.parser")
                 result_tag = soup.find("result")
@@ -61,25 +56,17 @@ class SingleCriticEvaluator(TaskEvaluator):
                     result_value = result_tag.get_text(strip=True)
                     # Skip if result is empty
                     if result_value:
-                        task_result_str += (
-                            "\n" + result_tag.get_text(strip=True) + "\n\n"
-                        )
+                        task_result_str += "\n" + result_tag.get_text(strip=True) + "\n\n"
                 else:
                     # Try to extract the task_result parent tag instead
                     task_result_tag = soup.find("task_result")
                     if task_result_tag:
-                        task_result_str += (
-                            "\n" + task_result_tag.get_text(strip=True) + "\n\n"
-                        )
+                        task_result_str += "\n" + task_result_tag.get_text(strip=True) + "\n\n"
                     else:
                         # If we can't find anything in task_result then just use the full agent response
-                        task_result_str += (
-                            "\n" + exchange.agent_response.content + "\n\n"
-                        )
+                        task_result_str += "\n" + exchange.agent_response.content + "\n\n"
 
-        critic_prompt = CRITIC_PROMPT.format(
-            goal=task.goal, description=task.description, result=task_result_str
-        )
+        critic_prompt = CRITIC_PROMPT.format(goal=task.goal, description=task.description, result=task_result_str)
         critic_exchange = send_agent_request(
             self.critic_agent, task, critic_prompt, [], DEFAULT_CRITIC_TEMPERATURE, 2000
         )
@@ -87,16 +74,12 @@ class SingleCriticEvaluator(TaskEvaluator):
         print_exchange(console, self.critic_agent, critic_exchange, "red")
 
         # TODO - create an ExchangeDecoder class that can decode an exchange and return Any type (e.g. a Dict or tuple)
-        critic_soup = BeautifulSoup(
-            critic_exchange.agent_response.content, "html.parser"
-        )
+        critic_soup = BeautifulSoup(critic_exchange.agent_response.content, "html.parser")
         outcome = critic_soup.find("outcome").get_text(strip=True)
         evaluation = critic_soup.find("evaluation").get_text(strip=True)
 
         outcome_enum = TaskOutcome.from_str(outcome)
-        task_result = TaskResult(
-            result=task_result_str, evaluation=evaluation, outcome=outcome_enum
-        )
+        task_result = TaskResult(result=task_result_str, evaluation=evaluation, outcome=outcome_enum)
 
         if lf_trace:
             lf_trace.generation(

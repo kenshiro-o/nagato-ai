@@ -8,6 +8,7 @@ import assemblyai as aai
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
@@ -68,22 +69,16 @@ class AssemblyAITranscriptionTool(AbstractTool):
             # Set up the configuration
             transcript_config = aai.TranscriptionConfig(
                 speaker_labels=config.speaker_labels,
-                speech_model=eval(
-                    config.speech_model
-                ),  # Convert string to actual enum value
+                speech_model=eval(config.speech_model),  # Convert string to actual enum value
             )
 
             # Start the transcription
-            transcript = transcriber.transcribe(
-                config.media_full_path, config=transcript_config
-            )
+            transcript = transcriber.transcribe(config.media_full_path, config=transcript_config)
 
             transcript.wait_for_completion()
 
             if transcript.status == "error":
-                raise RuntimeError(
-                    f"Error transcribing audio/video file: {transcript.error}"
-                )
+                raise RuntimeError(f"Error transcribing audio/video file: {transcript.error}")
 
             # Prepare the result
             result = {

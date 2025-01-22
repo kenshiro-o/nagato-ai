@@ -64,6 +64,6 @@ use_parentheses = true
 ensure_newline_before_comments = true
 import_heading_stdlib = "Standard Library"
 import_heading_thirdparty = "Third Party"
-import_heading_firstparty = "Company Libraries"
+import_heading_firstparty = "Nagato AI"
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 known_first_party = ["nagatoai_core"]

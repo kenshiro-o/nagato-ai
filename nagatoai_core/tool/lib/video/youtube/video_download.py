@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings
 from pytubefix import YouTube
 from pytubefix.cli import on_progress
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
@@ -16,8 +17,6 @@ from nagatoai_core.tool.abstract_tool import AbstractTool
 # from pytube.innertube import _default_clients
 # from pytube import cipher
 # from pytube.exceptions import RegexMatchError
-
-
 
 
 # _default_clients["ANDROID"]["context"]["client"]["clientVersion"] = "19.08.35"
@@ -38,8 +37,7 @@ def get_throttling_function_name(js: str) -> str:
         The name of the function used to compute the throttling parameter.
     """
     function_patterns = [
-        r'a\.[a-zA-Z]\s*&&\s*\([a-z]\s*=\s*a\.get\("n"\)\)\s*&&\s*'
-        r"\([a-z]\s*=\s*([a-zA-Z0-9$]+)(\[\d+\])?\([a-z]\)",
+        r'a\.[a-zA-Z]\s*&&\s*\([a-z]\s*=\s*a\.get\("n"\)\)\s*&&\s*' r"\([a-z]\s*=\s*([a-zA-Z0-9$]+)(\[\d+\])?\([a-z]\)",
         r"\([a-z]\s*=\s*([a-zA-Z0-9$]+)(\[\d+\])\([a-z]\)",
     ]
     # logger.debug('Finding throttling function name')
@@ -54,9 +52,7 @@ def get_throttling_function_name(js: str) -> str:
             if idx:
                 idx = idx.strip("[]")
                 array = re.search(
-                    r"var {nfunc}\s*=\s*(\[.+?\]);".format(
-                        nfunc=re.escape(function_match.group(1))
-                    ),
+                    r"var {nfunc}\s*=\s*(\[.+?\]);".format(nfunc=re.escape(function_match.group(1))),
                     js,
                 )
                 if array:
@@ -126,9 +122,7 @@ class YouTubeVideoDownloadTool(AbstractTool):
                 file_name = f"{yt.title}.mp4"
 
             # Ensure the file name is valid
-            file_name = "".join(
-                c for c in file_name if c.isalnum() or c in (" ", "-", "_", ".")
-            ).rstrip()
+            file_name = "".join(c for c in file_name if c.isalnum() or c in (" ", "-", "_", ".")).rstrip()
 
             # Construct the full output path
             full_path = os.path.join(config.output_path, file_name)

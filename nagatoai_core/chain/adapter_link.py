@@ -1,6 +1,7 @@
 # Standard Library
 from typing import Any, Callable, Dict
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.chain.chain import Link
 

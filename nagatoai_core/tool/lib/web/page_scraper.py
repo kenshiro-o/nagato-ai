@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup, Comment
 from pydantic import BaseModel, Field
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 

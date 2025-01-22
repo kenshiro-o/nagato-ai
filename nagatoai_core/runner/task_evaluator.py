@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.agent.message import Exchange
@@ -25,9 +26,7 @@ class TaskEvaluator(BaseModel, ABC):
         super().__init__(**data)
 
     @abstractmethod
-    def evaluate(
-        self, task: Task, agents: Dict[str, Agent], exchanges: List[Exchange]
-    ) -> TaskResult:
+    def evaluate(self, task: Task, agents: Dict[str, Agent], exchanges: List[Exchange]) -> TaskResult:
         """
         Evaluates the task
         """

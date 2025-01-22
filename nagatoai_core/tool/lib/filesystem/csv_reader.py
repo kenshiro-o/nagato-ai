@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Type, Union
 # Third Party
 from pydantic import BaseModel, Field
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
@@ -42,9 +43,7 @@ class CSVReaderTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = CSVReaderConfig
 
-    def _run(
-        self, config: CSVReaderConfig
-    ) -> Union[List[List[str]], List[Dict[str, str]]]:
+    def _run(self, config: CSVReaderConfig) -> Union[List[List[str]], List[Dict[str, str]]]:
         """
         Reads the CSV file based on the provided configuration.
 
@@ -82,9 +81,7 @@ class CSVReaderTool(AbstractTool):
         except FileNotFoundError as fe:
             raise Exception(f"CSV file not found at path: {config.full_path}") from fe
         except csv.Error as e:
-            raise Exception(
-                f"Error reading CSV file at path: {config.full_path}"
-            ) from e
+            raise Exception(f"Error reading CSV file at path: {config.full_path}") from e
         except Exception as e:
             raise Exception(
                 f"An unexpected error occurred while reading the CSV file at path: {config.full_path}"

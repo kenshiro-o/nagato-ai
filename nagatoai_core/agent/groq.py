@@ -7,6 +7,7 @@ from typing import List, Optional
 from groq import Groq
 from groq.types.chat import ChatCompletion
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.openai import OpenAIToolProvider  # Groq tool calling mechanism is similar to OpenAI's
@@ -131,9 +132,7 @@ class GroqAgent(Agent):
 
         exchange = Exchange(
             chat_history=messages,
-            user_msg=Message(
-                sender=Sender.USER, content=prompt, created_at=msg_send_time
-            ),
+            user_msg=Message(sender=Sender.USER, content=prompt, created_at=msg_send_time),
             agent_response=Message(
                 sender=Sender.AGENT,
                 content=response_text,

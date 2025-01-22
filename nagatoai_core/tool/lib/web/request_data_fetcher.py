@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, Type, Union
 import requests
 from pydantic import BaseModel, Field
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
@@ -63,9 +64,7 @@ class RequestDataFetcherTool(AbstractTool):
             if config.method.upper() == "GET":
                 response = requests.get(config.url, headers=config.headers)
             else:  # POST
-                response = requests.post(
-                    config.url, headers=config.headers, json=config.body
-                )
+                response = requests.post(config.url, headers=config.headers, json=config.body)
 
             response.raise_for_status()  # Raises an HTTPError for bad responses
 

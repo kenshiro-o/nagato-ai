@@ -1,14 +1,18 @@
 # Standard Library
 from typing import Any, Type
+import time
 
 # Third Party
 import requests
 from pydantic import BaseModel, Field
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
 from .base_config import READWISE_API_URL, BaseReadwiseConfig
+
+SLEEP_TIME_BETWEEN_TOOL_CALLS_IN_SECONDS = 3
 
 
 class ReadwiseDocumentFinderConfig(BaseReadwiseConfig, BaseModel):
@@ -52,11 +56,15 @@ class ReadwiseDocumentFinderTool(AbstractTool):
         headers = {
             "Authorization": f"Token {config.api_key}",
         }
-        params = {
-            "page_size": page_size,
-        }
-        if config.document_category:
-            params["category"] = config.document_category
+        # Only add params if we're not using a next_page URL (which already includes params)
+        if "page=" not in url:
+            params = {
+                "page_size": page_size,
+            }
+            if config.document_category:
+                params["category"] = config.document_category
+        else:
+            params = {}
 
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
@@ -96,6 +104,9 @@ class ReadwiseDocumentFinderTool(AbstractTool):
             next_page = response["next"]
             if not next_page:
                 break
+
+            # Sleep for a bit to prevent Readwise from returning TOO MANY REQUESTS error
+            time.sleep(SLEEP_TIME_BETWEEN_TOOL_CALLS_IN_SECONDS)
 
             response = self.get_documents(config, next_page, page_size)
 

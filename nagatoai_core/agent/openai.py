@@ -7,19 +7,13 @@ from typing import List, Optional
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
 
+# Nagato AI
 # Company Libraries
 from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 
 from .agent import Agent
-from .message import (
-    Exchange,
-    Message,
-    Sender,
-    TokenStatsAndParams,
-    ToolCall,
-    ToolResult,
-)
+from .message import Exchange, Message, Sender, TokenStatsAndParams, ToolCall, ToolResult
 
 
 def extract_openai_model_family(model: str) -> str:
@@ -144,9 +138,7 @@ class OpenAIAgent(Agent):
 
         exchange = Exchange(
             chat_history=messages,
-            user_msg=Message(
-                sender=Sender.USER, content=prompt, created_at=msg_send_time
-            ),
+            user_msg=Message(sender=Sender.USER, content=prompt, created_at=msg_send_time),
             agent_response=Message(
                 sender=Sender.AGENT,
                 content=response_text,

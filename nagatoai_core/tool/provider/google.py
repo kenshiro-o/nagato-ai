@@ -19,9 +19,7 @@ class GoogleToolProvider(AbstractToolProvider):
                     "items": self._get_field_schema(field_type.__args__[0]),
                 }
             elif field_type.__origin__ == Union and type(None) in field_type.__args__:
-                non_none_type = next(
-                    t for t in field_type.__args__ if t is not type(None)
-                )
+                non_none_type = next(t for t in field_type.__args__ if t is not type(None))
                 union_type = self._get_field_schema(non_none_type)
                 return {
                     "nullable": True,
@@ -47,9 +45,7 @@ class GoogleToolProvider(AbstractToolProvider):
         }
 
         for field_name, field in tool.args_schema.model_fields.items():
-            if field.json_schema_extra and field.json_schema_extra.get(
-                TOOL_METADATA_EXCLUDE_FROM_SCHEMA, False
-            ):
+            if field.json_schema_extra and field.json_schema_extra.get(TOOL_METADATA_EXCLUDE_FROM_SCHEMA, False):
                 continue
 
             field_schema = self._get_field_schema(field.annotation)
