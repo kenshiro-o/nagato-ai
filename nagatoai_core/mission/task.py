@@ -1,8 +1,10 @@
-from enum import Enum
-from typing import Union, Optional, List
-from datetime import datetime
+# Standard Library
 import uuid
+from datetime import datetime
+from enum import Enum
+from typing import List, Optional, Union
 
+# Third Party
 from pydantic import BaseModel
 
 
@@ -90,6 +92,4 @@ class Task(BaseModel):
         return self.status == TaskStatus.COMPLETED
 
     def __str__(self):
-        return (
-            f"Goal={self.goal} | Description={self.description} | Status={self.status}"
-        )
+        return f"Goal={self.goal} | Description={self.description} | Status={self.status}"

@@ -1,9 +1,13 @@
+# Standard Library
 from typing import List, Optional
 
+# Third Party
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.agent.message import Exchange
 from nagatoai_core.mission.task import Task
@@ -38,9 +42,7 @@ def send_agent_request(
         return agent.chat(task, prompt, tools, temperature, max_tokens)
 
 
-def print_exchange(
-    console: Console, agent: Agent, exchange: Exchange, color: str, task_id: str = ""
-):
+def print_exchange(console: Console, agent: Agent, exchange: Exchange, color: str, task_id: str = ""):
     """
     Prints the exchange between the user and the agent.
     :param agent: The agent involved in the exchange.

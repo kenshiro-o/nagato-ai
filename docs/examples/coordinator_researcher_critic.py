@@ -66,18 +66,35 @@ def main():
     google_api_key = os.getenv("GOOGLE_API_KEY")
     openai_api_key = os.getenv("OPENAI_API_KEY")
     groq_api_key = os.getenv("GROQ_API_KEY")
+    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+
+    # coordinator_agent: Agent = create_agent(
+    #     anthropic_api_key,
+    #     "claude-3-5-sonnet-20241022",
+    #     "Coordinator",
+    #     COORDINATOR_SYSTEM_PROMPT,
+    #     "Coordinator Agent",
+    # )
 
     coordinator_agent: Agent = create_agent(
-        anthropic_api_key,
-        "claude-3-5-sonnet-20240620",
+        deepseek_api_key,
+        "deepseek-reasoner",
         "Coordinator",
         COORDINATOR_SYSTEM_PROMPT,
         "Coordinator Agent",
     )
 
+    # researcher_agent = create_agent(
+    #     anthropic_api_key,
+    #     "claude-3-5-sonnet-20241022",
+    #     "Researcher",
+    #     RESEARCHER_SYSTEM_PROMPT,
+    #     "Researcher Agent",
+    # )
+
     researcher_agent = create_agent(
-        anthropic_api_key,
-        "claude-3-5-sonnet-20240620",
+        deepseek_api_key,
+        "deepseek-chat",
         "Researcher",
         RESEARCHER_SYSTEM_PROMPT,
         "Researcher Agent",

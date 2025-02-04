@@ -1,5 +1,8 @@
-from typing import List, Union, Dict, Any, Optional, Type
+# Standard Library
+from typing import Any, Dict, List, Optional, Type, Union
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.chain.chain import Link
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
@@ -26,9 +29,7 @@ class ToolLink(Link):
 
         # Merge the partial tool args with the input data
         if self.partial_tool_args is not None:
-            print(
-                f"Merging partial tool args: {self.partial_tool_args} with input data: {input_data}"
-            )
+            print(f"Merging partial tool args: {self.partial_tool_args} with input data: {input_data}")
             input_data = {
                 **input_data,
                 **self.partial_tool_args,

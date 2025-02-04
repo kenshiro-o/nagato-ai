@@ -1,10 +1,15 @@
+# Standard Library
 from typing import Any, Type
 
-from pydantic import BaseModel, Field
+# Third Party
 import requests
+from pydantic import BaseModel, Field
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
-from .base_config import BaseReadwiseConfig, READWISE_API_URL
+
+from .base_config import READWISE_API_URL, BaseReadwiseConfig
 
 
 class ReadwiseBookHighlightsListerConfig(BaseReadwiseConfig, BaseModel):
@@ -29,9 +34,7 @@ class ReadwiseBookHighlightsListerTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = ReadwiseBookHighlightsListerConfig
 
-    def get_highlights(
-        self, config: ReadwiseBookHighlightsListerConfig, url: str, page_size: int
-    ) -> Any:
+    def get_highlights(self, config: ReadwiseBookHighlightsListerConfig, url: str, page_size: int) -> Any:
         """
         Get all highlights from Readwise
         :return: The result of the list operation.
@@ -57,9 +60,7 @@ class ReadwiseBookHighlightsListerTool(AbstractTool):
         :return: The result of the list operation.
         """
         page_size = 50
-        response = self.get_highlights(
-            config, f"{READWISE_API_URL}/highlights/", page_size
-        )
+        response = self.get_highlights(config, f"{READWISE_API_URL}/highlights/", page_size)
         current_count = 0
         total_highlights = response["count"]
 

@@ -1,8 +1,12 @@
-from typing import Dict, Type, List
+# Standard Library
+from typing import Dict, List, Type
 
-from pydantic import BaseModel, Field
+# Third Party
 import Levenshtein
+from pydantic import BaseModel, Field
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
 

@@ -8,7 +8,7 @@
 
 Nagato-AI is an intuitive AI Agent library that works across multiple LLMs.
 
-Currently it supports OpenAI's GPT, Anthpropic's Claude, Google's Gemini, and Groq (e.g. Llama 3) LLMs. You can create agents from any of the aforementioned family of models and combine them together to build the most effective AI Agent system you desire.
+Currently it supports OpenAI's GPT, Anthpropic's Claude, Google's Gemini, Groq (e.g. Llama 3) , And DeepSeek LLMs. You can create agents from any of the aforementioned family of models and combine them together to build the most effective AI Agent system you desire.
 
 The name _Nagato_ is inspired from the popular anime Naruto. In Naruto, Nagato is a very powerful ninja who possesses special eyes (Rinnegan) that gives him immense powers.
 Nagato's powers enable him to control multiple bodies endowed with different abilities. Nagato is also able to see through the eyes of all the bodies which he controls, thereby minimising blindspots that opponents may want to exploit.
@@ -51,6 +51,7 @@ OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 GROQ_API_KEY=
 GOOGLE_API_KEY=
+DEEPSEEK_API_KEY=
 
 READWISE_API_KEY=
 
@@ -119,7 +120,7 @@ In this configuration we have the following:
 # Using Claude-3 Opus as the coordinator agent
 coordinator_agent: Agent = create_agent(
     anthropic_api_key,
-    "claude-3-opus-20240229",
+    "claude-3-5-sonnet-20241022",
     "Coordinator",
     COORDINATOR_SYSTEM_PROMPT,
     "Coordinator Agent",
@@ -166,7 +167,7 @@ task_list: List[Task] = [
 
 coordinator_agent: Agent = create_agent(
     anthropic_api_key,
-    "claude-3-sonnet-20240229",
+    "claude-3-5-sonnet-20241022",
     "Coordinator",
     COORDINATOR_SYSTEM_PROMPT,
     "Coordinator Agent",
@@ -269,6 +270,7 @@ Moreover, there is a lot of functionality currently missing from Nagato. I will 
 * ✅ Implement audio/text-to-speech tools
 * ✅ implement function calling for Google Gemini agent
 * ✅ LLMOps instrumentation (via Langfuse)
+* ✅ Add DeepSeek Agent
 * 🎯 implement short/long-term memory for agents (with RAG and memory synthesis)
 * 🎯 implement additional modalities (e.g. image, sound, etc.)
 * 🎯 Support for local LLMs (e.g. via Ollama)

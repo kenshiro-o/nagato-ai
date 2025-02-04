@@ -1,9 +1,14 @@
+# Standard Library
 import os
 from typing import Type
-from pydantic import Field, BaseModel
-from pydantic_settings import BaseSettings
-from openai import OpenAI
 
+# Third Party
+from openai import OpenAI
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings
+
+# Nagato AI
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
 
@@ -87,9 +92,7 @@ class OpenAIWhisperTool(AbstractTool):
 
             # Prepare the result
             result = {
-                "text": (
-                    transcript.text if hasattr(transcript, "text") else str(transcript)
-                ),
+                "text": (transcript.text if hasattr(transcript, "text") else str(transcript)),
                 "file_name": os.path.basename(config.audio_full_path),
                 "model": config.model,
                 "language": config.language or "auto-detected",
@@ -98,9 +101,7 @@ class OpenAIWhisperTool(AbstractTool):
             }
 
             # If the response format is verbose_json, include additional details
-            if config.response_format == "verbose_json" and hasattr(
-                transcript, "segments"
-            ):
+            if config.response_format == "verbose_json" and hasattr(transcript, "segments"):
                 result["segments"] = transcript.segments
 
             return result

@@ -1,8 +1,12 @@
+# Standard Library
 from typing import Any, Type
 
+# Third Party
 from pydantic import BaseModel, Field
 from rich.console import Console
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
 
@@ -23,9 +27,7 @@ class HumanInputTool(AbstractTool):
     """
 
     name: str = "human_input"
-    description: str = (
-        """Prompts the user to input a value. Returns the value entered by the user."""
-    )
+    description: str = """Prompts the user to input a value. Returns the value entered by the user."""
     args_schema: Type[BaseModel] = HumanInputConfig
 
     def _run(self, config: HumanInputConfig) -> Any:

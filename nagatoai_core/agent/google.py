@@ -1,23 +1,28 @@
-from typing import List, Optional, Dict
+# Standard Library
 import json
-
-import google.generativeai as genai
-import google.ai.generativelanguage as glm
-from google.protobuf.struct_pb2 import Struct
-from google.protobuf.json_format import MessageToDict
 from datetime import datetime, timezone
+from typing import Dict, List, Optional
+
+# Third Party
+import google.ai.generativelanguage as glm
+import google.generativeai as genai
+from google.protobuf.json_format import MessageToDict
+from google.protobuf.struct_pb2 import Struct
+
+# Nagato AI
+# Company Libraries
+from nagatoai_core.mission.task import Task
+from nagatoai_core.tool.provider.google import GoogleToolProvider
 
 from .agent import Agent
 from .message import (
-    Sender,
-    Message,
     Exchange,
-    ToolResult,
-    ToolCall,
+    Message,
+    Sender,
     TokenStatsAndParams,
+    ToolCall,
+    ToolResult,
 )
-from nagatoai_core.mission.task import Task
-from nagatoai_core.tool.provider.google import GoogleToolProvider
 
 
 def extract_google_model_family(model: str) -> str:
@@ -90,8 +95,9 @@ class GoogleAgent(Agent):
         """
         Prints contents of the messages list that we submit to the Gemini model.
         """
-        print(
-            f"**** GEMINI MESSAGE: {json.dumps(self._serialize_message(messages), indent=2)} ****"
+        self.logger.debug(
+            "Gemini message",
+            gemini_message=json.dumps(self._serialize_message(messages), indent=2),
         )
 
     def chat(

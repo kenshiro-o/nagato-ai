@@ -1,12 +1,17 @@
-from typing import Any, Type, List, Optional
+# Standard Library
+import time
+from typing import Any, List, Optional, Type
 
-from pydantic import BaseModel, Field
-from datetime import datetime, timedelta
-from dateutil.parser import parse
+# Third Party
 import requests
+from dateutil.parser import parse
+from pydantic import BaseModel, Field
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
-from .base_config import BaseReadwiseConfig, READWISE_API_URL
+
+from .base_config import READWISE_API_URL, BaseReadwiseConfig
 
 
 class ReadwiseHighightsListerConfig(BaseReadwiseConfig, BaseModel):
@@ -57,16 +62,17 @@ class ReadwiseHighightsListerTool(AbstractTool):
         headers = {
             "Authorization": f"Token {config.api_key}",
         }
-        params = {
-            "page_size": page_size,
-        }
+        params = {}
 
-        if config.from_datetime:
+        if "page_size" not in url:
+            params["page_size"] = page_size
+
+        if config.from_datetime and "updated__gt" not in url:
             from_datetime_dt = parse(config.from_datetime)
             from_datetime_dt_str = from_datetime_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
             params["updated__gt"] = from_datetime_dt_str
 
-        if config.to_datetime:
+        if config.to_datetime and "updated__lt" not in url:
             to_datetime_dt = parse(config.to_datetime)
             to_datetime_dt_str = to_datetime_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
             params["updated__lt"] = to_datetime_dt_str
@@ -107,6 +113,9 @@ class ReadwiseHighightsListerTool(AbstractTool):
 
             if not next_page:
                 break
+
+            # Sleep to avoid rate limiting
+            time.sleep(3)
 
             response = self.get_highlights(config, next_page, page_size)
 

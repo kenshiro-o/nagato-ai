@@ -1,7 +1,11 @@
+# Standard Library
 from typing import Any, Type
 
+# Third Party
 from pydantic import BaseModel, Field
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
 
@@ -23,9 +27,7 @@ class TextFileReaderTool(AbstractTool):
     """
 
     name: str = "text_file_reader"
-    description: str = (
-        """Reads a text file from the specified path and returns its contents."""
-    )
+    description: str = """Reads a text file from the specified path and returns its contents."""
     args_schema: Type[BaseModel] = TextFileReaderConfig
 
     def _run(self, config: TextFileReaderConfig) -> Any:

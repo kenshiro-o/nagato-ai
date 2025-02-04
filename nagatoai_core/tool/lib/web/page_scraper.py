@@ -1,11 +1,15 @@
-from typing import Any, Type
+# Standard Library
 import gzip
-import chardet
+from typing import Any, Type
 
-from pydantic import BaseModel, Field
+# Third Party
+import chardet
 import requests
 from bs4 import BeautifulSoup, Comment
+from pydantic import BaseModel, Field
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 
 

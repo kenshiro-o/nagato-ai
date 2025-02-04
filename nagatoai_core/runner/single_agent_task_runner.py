@@ -1,26 +1,31 @@
-from typing import Union, Optional, List, Dict, Type
+# Standard Library
 from datetime import datetime, timezone
+from typing import Dict, List, Optional, Type, Union
+import time
 
-from rich.console import Console
+# Third Party
 from langfuse import Langfuse
+from rich.console import Console
 
-from nagatoai_core.runner.task_runner import TaskRunner
-from nagatoai_core.mission.task import Task
+# Nagato AI
+# Company Libraries
+from nagatoai_core.agent.agent import Agent  # Import the Agent class
 from nagatoai_core.agent.message import (
     Exchange,
+    ToolCall,
     ToolResult,
     ToolRun,
-    ToolCall,
 )  # Added ToolCall here
-from nagatoai_core.mission.task import TaskResult, TaskOutcome
-from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
+from nagatoai_core.common.common import print_exchange, send_agent_request
+from nagatoai_core.mission.task import Task, TaskOutcome, TaskResult
 from nagatoai_core.prompt.templates import (
-    RESEARCHER_TASK_PROMPT_WITH_EXAMPLE,
     RESEARCHER_TASK_PROMPT_NO_EXAMPLE,
+    RESEARCHER_TASK_PROMPT_WITH_EXAMPLE,
     RESEARCHER_TASK_PROMPT_WITH_PREVIOUS_UNSATISFACTORY_TASK_RESULT,
 )
-from nagatoai_core.common.common import send_agent_request, print_exchange
-from nagatoai_core.agent.agent import Agent  # Import the Agent class
+from nagatoai_core.runner.task_runner import TaskRunner
+from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
+from nagatoai_core.common.structured_logger import StructuredLogger
 
 DEFAULT_AGENT_TEMPERATURE = 0.6
 
@@ -53,6 +58,7 @@ class SingleAgentTaskRunner(TaskRunner):
             raise ValueError("SingleAgentTaskRunner requires only one agent")
 
         self.langfuse = None if not self.tracing_enabled else Langfuse()
+        self.logger = StructuredLogger.get_logger({})
 
     def _run_tool_call(
         self,
@@ -173,7 +179,7 @@ class SingleAgentTaskRunner(TaskRunner):
             task_prompt,
             available_tools,
             DEFAULT_AGENT_TEMPERATURE,
-            2000,
+            4096,
         )
         exchanges.append(exchange)
 
@@ -212,10 +218,13 @@ class SingleAgentTaskRunner(TaskRunner):
             # TODO - Move this block into the method _run_tool_call
             #  where we can tell the agent that the tool name or parameter is incorrect
             #  and get the agent to suggest the appropriate tool name and parameters
+
+            tool_results: List[ToolResult] = []
+            tool_runs: List[ToolRun] = []
             for tool_call in latest_exchange.agent_response.tool_calls:
-                # print(
-                #     f"*** Agent to call tool: {tool_call.name} with parameters: {tool_call.parameters}"
-                # )
+                print(
+                    f"*** Agent to call tool: {tool_call.name} with parameters: {tool_call.parameters}"
+                )
                 tool = self.tool_registry.get_tool(tool_call.name)
                 tool_instance = tool()
                 tool_params_schema = tool_instance.args_schema
@@ -237,59 +246,70 @@ class SingleAgentTaskRunner(TaskRunner):
                         f"**** Tool run result not in cache. Running tool... [tool-call={tool_call.name}, params={tool_call.parameters} ****"
                     )
 
-                # print(f"*** Tool Output: {tool_output}")
+                print(f"*** Tool with name {tool_call.name} output: {tool_output}")
 
                 tool_result = ToolResult(
                     id=tool_call.id, name=tool_call.name, result=tool_output, error=None
                 )
+                tool_results.append(tool_result)
 
                 tool_run = ToolRun(id=tool_call.id, call=tool_call, result=tool_result)
+                tool_runs.append(tool_run)
 
-                tool_result_exchange = agent.send_tool_run_results(
-                    self.current_task,
-                    [tool_result],
-                    available_tools,
-                    DEFAULT_AGENT_TEMPERATURE,
-                    2000,
+                # Sleep in between tool calls
+                time.sleep(10)
+
+            print(
+                f"*** Executed {len(tool_runs)} tool runs with results: {tool_results}"
+            )
+
+            tool_result_exchange = agent.send_tool_run_results(
+                self.current_task,
+                # [tool_result],
+                tool_results,
+                available_tools,
+                DEFAULT_AGENT_TEMPERATURE,
+                4096,
+            )
+            exchanges.append(tool_result_exchange)
+
+            if lf_trace:
+                lf_trace.generation(
+                    start_time=tool_result_exchange.user_msg.created_at,
+                    model=agent.model,
+                    name=f"{agent.name} - tool run - {tool_call.name} (id={tool_call.id})",
+                    input=tool_result_exchange.chat_history,
+                    model_parameters={
+                        "max_tokens": tool_result_exchange.token_stats_and_params.max_tokens,
+                        "temperature": tool_result_exchange.token_stats_and_params.temperature,
+                    },
+                    metadata={
+                        "task_id": self.current_task.id,
+                        "task_goal": self.current_task.goal,
+                        "task_description": self.current_task.description,
+                    },
+                    output=tool_result_exchange.agent_response.content,
+                    end_time=tool_result_exchange.agent_response.created_at,
+                    usage={
+                        "input": tool_result_exchange.token_stats_and_params.input_tokens_used,
+                        "output": tool_result_exchange.token_stats_and_params.output_tokens_used,
+                        "unit:": "TOKENS",
+                    },
                 )
-                exchanges.append(tool_result_exchange)
 
-                if lf_trace:
-                    lf_trace.generation(
-                        start_time=tool_result_exchange.user_msg.created_at,
-                        model=agent.model,
-                        name=f"{agent.name} - tool run - {tool_call.name} (id={tool_call.id})",
-                        input=tool_result_exchange.chat_history,
-                        model_parameters={
-                            "max_tokens": tool_result_exchange.token_stats_and_params.max_tokens,
-                            "temperature": tool_result_exchange.token_stats_and_params.temperature,
-                        },
-                        metadata={
-                            "task_id": self.current_task.id,
-                            "task_goal": self.current_task.goal,
-                            "task_description": self.current_task.description,
-                        },
-                        output=tool_result_exchange.agent_response.content,
-                        end_time=tool_result_exchange.agent_response.created_at,
-                        usage={
-                            "input": tool_result_exchange.token_stats_and_params.input_tokens_used,
-                            "output": tool_result_exchange.token_stats_and_params.output_tokens_used,
-                            "unit:": "TOKENS",
-                        },
-                    )
-
+            for tool_run in tool_runs:
                 self.tool_cache.add_tool_run(tool_run)
 
-                # print(
-                #     f"*** Assistant from Tool Call reply: {tool_result_exchange.agent_response}"
-                # )
-                print_exchange(
-                    console,
-                    agent,
-                    tool_result_exchange,
-                    "orange_red1",
-                    task_id=self.current_task.id,
-                )
+            # print(
+            #     f"*** Assistant from Tool Call reply: {tool_result_exchange.agent_response}"
+            # )
+            print_exchange(
+                console,
+                agent,
+                tool_result_exchange,
+                "orange_red1",
+                task_id=self.current_task.id,
+            )
 
             latest_exchange = exchanges[-1]
 
@@ -318,14 +338,27 @@ class SingleAgentTaskRunner(TaskRunner):
 
             if self.current_task.result.outcome == TaskOutcome.MEETS_REQUIREMENT:
                 task_pass = True
-                print(f"✅ Task {self.current_task} has passed")
+                self.logger.info(
+                    "✅Task completed successfully",
+                    task_id=self.current_task.id,
+                    task_goal=self.current_task.goal,
+                    task_description=self.current_task.description,
+                )
             else:
                 task_retry_count += 1
                 if task_retry_count >= 3:
-                    print(
-                        f"Task {self.current_task} has been retried more than 3 times. Exiting..."
+                    self.logger.error(
+                        "❌ Task has been retried more than 3 times. Exiting...",
+                        task_id=self.current_task.id,
+                        task_goal=self.current_task.goal,
+                        task_description=self.current_task.description,
                     )
                     break
-                print(f"❌ Task {self.current_task} has failed. Retrying...")
+                self.logger.warning(
+                    "⚠️ Task has failed. Retrying...",
+                    task_id=self.current_task.id,
+                    task_goal=self.current_task.goal,
+                    task_description=self.current_task.description,
+                )
 
         return all_exchanges

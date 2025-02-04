@@ -24,6 +24,8 @@ def main():
     """
     load_dotenv()
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    google_api_key = os.getenv("GOOGLE_API_KEY")
 
     # Create a list of tools
     yt_tool_link = ToolLink(
@@ -32,9 +34,9 @@ def main():
         tool=YouTubeVideoDownloadTool,
     )
 
-    video_name = "pieter_levels_fridman.mp4"
+    video_name = "latent_space_2024_review.mp4"
     input_data = {
-        "video_id": "oFtjKbXKqbg",
+        "video_id": "26PVzD707a8",
         "output_path": "./media/",
         "file_name": video_name,
     }
@@ -87,6 +89,26 @@ def main():
         "Worker",
     )
 
+    open_ai_worker_agent = create_agent(
+        openai_api_key,
+        "o1-preview-2024-09-12",
+        "Worker agent",
+        """
+        You are a helpful assistant adept at analysing transcripts from podcasts and identifying the most important parts.
+        """,
+        "Worker",
+    )
+
+    gemini_worker_agent = create_agent(
+        google_api_key,
+        "gemini-2.0-flash-exp",
+        "Worker agent",
+        """
+        You are a helpful assistant adept at analysing transcripts from podcasts and identifying the most important parts.
+        """,
+        "Worker",
+    )
+
     wa_prompt_template = PromptTemplate(
         template="""
         You are tasked with analyzing a transcript and identifying the most important parts. Your goal is to extract key soundbites and the most important points from the given transcript. Follow these instructions carefully:
@@ -106,12 +128,12 @@ def main():
         </key_moments>
 
         3. Focus on extracting sentences that cover one or more of these points:
-        - How to be productive as an indie hacker
-        - What projects to work on
-        - How to spot trends
-        - How to build successful startups
-        - How to use AI
-        - Advice for entrepreneurs
+        - LLM benchmark saturation
+        - Cost reduction in price per tokens
+        - The promise of synthetic data
+        - Test-time compute models
+        - GPU-rich vs GPU-poor startups
+        - Thoughts on the future of AI in 2025
 
         4. You may also include any other sentences that you deem important for the analysis.
 
@@ -122,17 +144,22 @@ def main():
 
         6. Guidelines for soundbites:
         - Soundbites can be composed of multiple contiguous sentences.
+        - Soundbites should capture a full idea and should not be partial sentences.
         - Aim for soundbites that are at most 90 seconds long.
 
         7. Present your final output as a series of <key_moment> entries, each containing the transcript, from_timestamp, and to_timestamp tags.
 
-        Remember to carefully analyze the transcript and select the most relevant and impactful moments that align with the specified topics. Ensure that your chosen soundbites provide valuable insights and advice related to indie hacking, entrepreneurship, and startup success.
+        Remember to carefully analyze the transcript and select the most relevant and impactful moments that align with the specified topics. Ensure that your chosen soundbites provide valuable insights.
+        Identify up to 10 key moments.
+        Make sure a key moment always includes a transcript, from_timestamp and to_timestamp.
         """,
         data_light_schema={},
     )
 
     agent_soundbite_extractor_link = AgentLink(
         agent=worker_agent,
+        # agent=open_ai_worker_agent,
+        # agent=gemini_worker_agent,
         input_prompt_template=wa_prompt_template,
     )
 

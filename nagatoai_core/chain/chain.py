@@ -1,10 +1,14 @@
+# Standard Library
 from abc import ABC, abstractmethod
-from typing import List, Any
+from typing import Any, List
 
+# Third Party
 from pydantic import BaseModel, Field
 from rich.console import Console
 from rich.panel import Panel
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.chain.agent_param_converter import AgentParamConverter
 from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 
@@ -66,9 +70,7 @@ class Chain(BaseModel):
         """
         self.links.append(link)
 
-    def _run_link(
-        self, link: Link, input_data: Any, console: Console, attempt_nb: int
-    ) -> Any:
+    def _run_link(self, link: Link, input_data: Any, console: Console, attempt_nb: int) -> Any:
         """
         Run a link with the given input data
         :param link: The link to run
@@ -88,10 +90,7 @@ class Chain(BaseModel):
             )
 
             data_converted = False
-            if (
-                link.category() == "TOOL_LINK"
-                and self.agent_param_conv_link is not None
-            ):
+            if link.category() == "TOOL_LINK" and self.agent_param_conv_link is not None:
                 # tool_link: ToolLink = link
                 # TODO - Find a way to set the type to ToolLink without circular imports
                 tool_instance = link.tool()

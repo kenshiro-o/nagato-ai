@@ -1,10 +1,15 @@
+# Standard Library
+import uuid
 from abc import ABC, abstractmethod
 from typing import List, Optional
-import uuid
 
-from .message import Exchange, ToolResult
+# Nagato AI
+# Company Libraries
+from nagatoai_core.common.structured_logger import StructuredLogger
 from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
+
+from .message import Exchange, ToolResult
 
 
 class Agent(ABC):
@@ -32,6 +37,16 @@ class Agent(ABC):
         self.role = role
         self.role_description = role_description
         self.nickname = nickname
+        self.logger = StructuredLogger.get_logger(
+            {
+                "agent_id": self.agent_id,
+                "model": self.model,
+                "role": self.role,
+                "nickname": self.nickname,
+            }
+        )
+
+        self.logger.info("Agent initialized")
 
     @property
     def id(self) -> str:

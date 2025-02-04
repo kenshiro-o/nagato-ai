@@ -1,9 +1,14 @@
+# Standard Library
 from abc import ABC, abstractmethod
-from typing import Type, Dict
+from typing import Dict, Type
 
+# Third Party
 from pydantic import BaseModel
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
+
 from .abstract_tool import TOOL_METADATA_EXCLUDE_FROM_SCHEMA
 
 
@@ -61,9 +66,7 @@ class AnthropicToolSchemaGenerator(AbstractToolSchemaGenerator):
             # print(
             #     f"field_name: {field_name} | field: {field} | annotation: {field.annotation} | metadata: {field.metadata}"
             # )
-            if field.json_schema_extra and field.json_schema_extra.get(
-                TOOL_METADATA_EXCLUDE_FROM_SCHEMA, False
-            ):
+            if field.json_schema_extra and field.json_schema_extra.get(TOOL_METADATA_EXCLUDE_FROM_SCHEMA, False):
                 continue
 
             field_type_name = ""

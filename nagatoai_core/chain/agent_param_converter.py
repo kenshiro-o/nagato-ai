@@ -1,10 +1,14 @@
-from typing import Any, Dict
+# Standard Library
 import json
 import traceback
+from typing import Any, Dict
 
-from pydantic import BaseModel
+# Third Party
 from bs4 import BeautifulSoup
+from pydantic import BaseModel
 
+# Nagato AI
+# Company Libraries
 from nagatoai_core.agent.agent import Agent
 
 
@@ -111,9 +115,7 @@ class AgentParamConverter(BaseModel):
             input_data = params_data["input_data"]
             target_schema = params_data["target_schema"]
 
-            full_prompt = conv_prompt.format(
-                input_data=input_data, target_schema=target_schema
-            )
+            full_prompt = conv_prompt.format(input_data=input_data, target_schema=target_schema)
 
             exchange = self.agent.chat(None, full_prompt, [], 0.6, 2000)
             resp = exchange.agent_response.content

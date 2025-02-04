@@ -1,14 +1,17 @@
-from typing import List, Any, Iterable
-from collections.abc import Mapping
+# Standard Library
 import traceback
+from collections.abc import Mapping
+from typing import Any, Iterable, List
 
+# Third Party
 from pydantic import Field
 from rich.console import Console
 from rich.panel import Panel
 
-
-from nagatoai_core.chain.chain import Link
+# Nagato AI
+# Company Libraries
 from nagatoai_core.chain.agent_param_converter import AgentParamConverter
+from nagatoai_core.chain.chain import Link
 from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 
 
@@ -30,9 +33,7 @@ class Ring(Link):
 
     # TODO Create a separate internal method for running a link -> this will allow us to do retries etc.
 
-    def _run_link(
-        self, link: Link, data: Any, console: Console, attempt_nb: int
-    ) -> Any:
+    def _run_link(self, link: Link, data: Any, console: Console, attempt_nb: int) -> Any:
         """
         Run a link and handle any exceptions that occur
         :param link: The link to run
@@ -51,10 +52,7 @@ class Ring(Link):
             #     )
             # )
 
-            if (
-                link.category() == "TOOL_LINK"
-                and self.agent_param_conv_link is not None
-            ):
+            if link.category() == "TOOL_LINK" and self.agent_param_conv_link is not None:
                 # tool_link: ToolLink = link
                 # TODO - Find a way to set the type to ToolLink without circular imports
                 tool_instance = link.tool()
