@@ -22,6 +22,7 @@ def extract_groq_model_family(model: str) -> str:
     :param model: The Groq model name.
     """
     family_prefixes = [
+        "deepseek-r1",
         "llama-3.1-8b",
         "llama-3.1-70b",
         "llama3-8b",

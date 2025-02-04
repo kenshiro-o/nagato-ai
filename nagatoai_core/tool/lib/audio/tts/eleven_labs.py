@@ -34,7 +34,7 @@ class ElevenLabsTTSConfig(BaseSettings, BaseModel):
         description="The output file path to save the generated audio. By default we save the audio file as output.mp3.",
     )
 
-    model_id: str = Field(
+    voice_model_id: str = Field(
         "eleven_monolingual_v1",
         description="The ID of the model to use for text-to-speech. Possible values are 'eleven_monolingual_v1' or 'eleven_multilingual_v1', 'eleven_multilingual_v2', and 'eleven_turbo_v2'. By default we use 'eleven_monolingual_v1'.",
     )
@@ -80,7 +80,7 @@ class ElevenLabsTTSTool(AbstractTool):
 
         data = {
             "text": config.input_text,
-            "model_id": config.model_id,
+            "model_id": config.voice_model_id,
             "voice_settings": {
                 "stability": config.stability,
                 "similarity_boost": config.similarity_boost,

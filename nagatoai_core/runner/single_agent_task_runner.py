@@ -1,7 +1,7 @@
 # Standard Library
+import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Type, Union
-import time
 
 # Third Party
 from langfuse import Langfuse
@@ -10,13 +10,9 @@ from rich.console import Console
 # Nagato AI
 # Company Libraries
 from nagatoai_core.agent.agent import Agent  # Import the Agent class
-from nagatoai_core.agent.message import (
-    Exchange,
-    ToolCall,
-    ToolResult,
-    ToolRun,
-)  # Added ToolCall here
+from nagatoai_core.agent.message import Exchange, ToolCall, ToolResult, ToolRun  # Added ToolCall here
 from nagatoai_core.common.common import print_exchange, send_agent_request
+from nagatoai_core.common.structured_logger import StructuredLogger
 from nagatoai_core.mission.task import Task, TaskOutcome, TaskResult
 from nagatoai_core.prompt.templates import (
     RESEARCHER_TASK_PROMPT_NO_EXAMPLE,
@@ -25,7 +21,6 @@ from nagatoai_core.prompt.templates import (
 )
 from nagatoai_core.runner.task_runner import TaskRunner
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
-from nagatoai_core.common.structured_logger import StructuredLogger
 
 DEFAULT_AGENT_TEMPERATURE = 0.6
 
@@ -83,15 +78,11 @@ class SingleAgentTaskRunner(TaskRunner):
         else:
             tool_output = tool_instance._run(tool_params)
 
-        tool_result = ToolResult(
-            id=tool_call.id, name=tool_call.name, result=tool_output, error=None
-        )
+        tool_result = ToolResult(id=tool_call.id, name=tool_call.name, result=tool_output, error=None)
 
         tool_run = ToolRun(id=tool_call.id, call=tool_call, result=tool_result)
 
-        tool_result_exchange = agent.send_tool_run_results(
-            [tool_result], DEFAULT_AGENT_TEMPERATURE, 2000
-        )
+        tool_result_exchange = agent.send_tool_run_results([tool_result], DEFAULT_AGENT_TEMPERATURE, 2000)
         exchanges.append(tool_result_exchange)
 
         self.tool_cache.add_tool_run(tool_run)
@@ -146,18 +137,13 @@ class SingleAgentTaskRunner(TaskRunner):
         #  - the previous task
         #  - the current task exchange history
         task_prompt = ""
-        if (
-            self.current_task.result
-            and self.current_task.result.outcome != TaskOutcome.MEETS_REQUIREMENT
-        ):
-            task_prompt = (
-                RESEARCHER_TASK_PROMPT_WITH_PREVIOUS_UNSATISFACTORY_TASK_RESULT.format(
-                    goal=self.current_task.goal,
-                    outcome=self.current_task.result.outcome,
-                    evaluation=self.current_task.result.evaluation,
-                    description=self.current_task.description,
-                    tools_recommended=t_recs,
-                )
+        if self.current_task.result and self.current_task.result.outcome != TaskOutcome.MEETS_REQUIREMENT:
+            task_prompt = RESEARCHER_TASK_PROMPT_WITH_PREVIOUS_UNSATISFACTORY_TASK_RESULT.format(
+                goal=self.current_task.goal,
+                outcome=self.current_task.result.outcome,
+                evaluation=self.current_task.result.evaluation,
+                description=self.current_task.description,
+                tools_recommended=t_recs,
             )
         else:
             if len(agent.history) > 0:
@@ -222,17 +208,13 @@ class SingleAgentTaskRunner(TaskRunner):
             tool_results: List[ToolResult] = []
             tool_runs: List[ToolRun] = []
             for tool_call in latest_exchange.agent_response.tool_calls:
-                print(
-                    f"*** Agent to call tool: {tool_call.name} with parameters: {tool_call.parameters}"
-                )
+                print(f"*** Agent to call tool: {tool_call.name} with parameters: {tool_call.parameters}")
                 tool = self.tool_registry.get_tool(tool_call.name)
                 tool_instance = tool()
                 tool_params_schema = tool_instance.args_schema
                 tool_params = tool_params_schema(**tool_call.parameters)
 
-                tool_run = self.tool_cache.get_tool_run(
-                    tool_call.name, tool_call.parameters
-                )
+                tool_run = self.tool_cache.get_tool_run(tool_call.name, tool_call.parameters)
 
                 # Make sure that the tool run result is not an error or Exception
                 if tool_run and not isinstance(tool_run.result.result, BaseException):
@@ -248,9 +230,7 @@ class SingleAgentTaskRunner(TaskRunner):
 
                 print(f"*** Tool with name {tool_call.name} output: {tool_output}")
 
-                tool_result = ToolResult(
-                    id=tool_call.id, name=tool_call.name, result=tool_output, error=None
-                )
+                tool_result = ToolResult(id=tool_call.id, name=tool_call.name, result=tool_output, error=None)
                 tool_results.append(tool_result)
 
                 tool_run = ToolRun(id=tool_call.id, call=tool_call, result=tool_result)
@@ -259,9 +239,7 @@ class SingleAgentTaskRunner(TaskRunner):
                 # Sleep in between tool calls
                 time.sleep(10)
 
-            print(
-                f"*** Executed {len(tool_runs)} tool runs with results: {tool_results}"
-            )
+            print(f"*** Executed {len(tool_runs)} tool runs with results: {tool_results}")
 
             tool_result_exchange = agent.send_tool_run_results(
                 self.current_task,
@@ -331,9 +309,7 @@ class SingleAgentTaskRunner(TaskRunner):
             all_exchanges.extend(exchanges)
             self.current_task.end_time = datetime.now(timezone.utc)
 
-            task_result = self.task_evaluator.evaluate(
-                self.current_task, self.agents, exchanges
-            )
+            task_result = self.task_evaluator.evaluate(self.current_task, self.agents, exchanges)
             self.current_task.update(task_result)
 
             if self.current_task.result.outcome == TaskOutcome.MEETS_REQUIREMENT:

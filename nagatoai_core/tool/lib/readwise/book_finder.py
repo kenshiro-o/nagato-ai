@@ -1,6 +1,6 @@
 # Standard Library
-from typing import Any, Type
 import time
+from typing import Any, Type
 
 # Third Party
 import requests
@@ -43,9 +43,7 @@ class ReadwiseDocumentFinderTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = ReadwiseDocumentFinderConfig
 
-    def get_documents(
-        self, config: ReadwiseDocumentFinderConfig, url: str, page_size: int
-    ) -> Any:
+    def get_documents(self, config: ReadwiseDocumentFinderConfig, url: str, page_size: int) -> Any:
         """
         Get all documents from Readwise
         :config: The configuration for the ReadwiseDocumentFinder tool.
@@ -83,18 +81,14 @@ class ReadwiseDocumentFinderTool(AbstractTool):
         current_count = 0
         total_documents = response["count"]
 
-        config_doc_name_sanitised = (
-            config.document_name.lower().strip().replace("  ", " ")
-        )
+        config_doc_name_sanitised = config.document_name.lower().strip().replace("  ", " ")
         while True:
             results = response["results"]
             current_count += len(results)
 
             for result in results:
                 # Remove leading/trailing spaces and make sure we never have double spaces either
-                result_title_sanitised = (
-                    result["title"].lower().strip().replace("  ", " ")
-                )
+                result_title_sanitised = result["title"].lower().strip().replace("  ", " ")
                 if config_doc_name_sanitised == result_title_sanitised:
                     return result
 
