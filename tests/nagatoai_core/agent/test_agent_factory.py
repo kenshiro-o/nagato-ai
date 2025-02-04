@@ -1,20 +1,20 @@
 # Standard Library
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 # Third Party
-from openai import OpenAI
+import google.generativeai as genai
+import pytest
 from anthropic import Anthropic
 from groq import Groq
-import google.generativeai as genai
+from openai import OpenAI
 
 # Nagato AI
-from nagatoai_core.agent.factory import create_agent, get_agent_tool_provider
-from nagatoai_core.agent.openai import OpenAIAgent
 from nagatoai_core.agent.anthropic import AnthropicAgent
+from nagatoai_core.agent.deepseek import DeepSeekAgent
+from nagatoai_core.agent.factory import create_agent, get_agent_tool_provider
 from nagatoai_core.agent.google import GoogleAgent
 from nagatoai_core.agent.groq import GroqAgent
-from nagatoai_core.agent.deepseek import DeepSeekAgent
+from nagatoai_core.agent.openai import OpenAIAgent
 from nagatoai_core.tool.provider.anthropic import AnthropicToolProvider
 from nagatoai_core.tool.provider.google import GoogleToolProvider
 from nagatoai_core.tool.provider.openai import OpenAIToolProvider

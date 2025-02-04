@@ -76,13 +76,13 @@ def main():
     #     "Coordinator Agent",
     # )
 
-    coordinator_agent: Agent = create_agent(
-        openai_api_key,
-        "o3-mini",
-        "Coordinator",
-        COORDINATOR_SYSTEM_PROMPT,
-        "Coordinator Agent",
-    )
+    # coordinator_agent: Agent = create_agent(
+    #     openai_api_key,
+    #     "o3-mini",
+    #     "Coordinator",
+    #     COORDINATOR_SYSTEM_PROMPT,
+    #     "Coordinator Agent",
+    # )
 
     # coordinator_agent: Agent = create_agent(
     #     deepseek_api_key,
@@ -92,13 +92,13 @@ def main():
     #     "Coordinator Agent",
     # )
 
-    # coordinator_agent: Agent = create_agent(
-    #     groq_api_key,
-    #     "groq-deepseek-r1-distill-llama-70b-specdec",
-    #     "Coordinator",
-    #     COORDINATOR_SYSTEM_PROMPT,
-    #     "Coordinator Agent",
-    # )
+    coordinator_agent: Agent = create_agent(
+        groq_api_key,
+        "groq-deepseek-r1-distill-llama-70b-specdec",
+        "Coordinator",
+        COORDINATOR_SYSTEM_PROMPT,
+        "Coordinator Agent",
+    )
 
     researcher_agent = create_agent(
         anthropic_api_key,
