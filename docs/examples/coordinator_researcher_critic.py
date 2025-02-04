@@ -76,29 +76,45 @@ def main():
     #     "Coordinator Agent",
     # )
 
+    # coordinator_agent: Agent = create_agent(
+    #     openai_api_key,
+    #     "o3-mini",
+    #     "Coordinator",
+    #     COORDINATOR_SYSTEM_PROMPT,
+    #     "Coordinator Agent",
+    # )
+
+    # coordinator_agent: Agent = create_agent(
+    #     deepseek_api_key,
+    #     "deepseek-reasoner",
+    #     "Coordinator",
+    #     COORDINATOR_SYSTEM_PROMPT,
+    #     "Coordinator Agent",
+    # )
+
     coordinator_agent: Agent = create_agent(
-        deepseek_api_key,
-        "deepseek-reasoner",
+        groq_api_key,
+        "groq-deepseek-r1-distill-llama-70b-specdec",
         "Coordinator",
         COORDINATOR_SYSTEM_PROMPT,
         "Coordinator Agent",
     )
 
-    # researcher_agent = create_agent(
-    #     anthropic_api_key,
-    #     "claude-3-5-sonnet-20241022",
-    #     "Researcher",
-    #     RESEARCHER_SYSTEM_PROMPT,
-    #     "Researcher Agent",
-    # )
-
     researcher_agent = create_agent(
-        deepseek_api_key,
-        "deepseek-chat",
+        anthropic_api_key,
+        "claude-3-5-sonnet-20241022",
         "Researcher",
         RESEARCHER_SYSTEM_PROMPT,
         "Researcher Agent",
     )
+
+    # researcher_agent = create_agent(
+    #     deepseek_api_key,
+    #     "deepseek-chat",
+    #     "Researcher",
+    #     RESEARCHER_SYSTEM_PROMPT,
+    #     "Researcher Agent",
+    # )
 
     # researcher_agent = create_agent(
     #     google_api_key,
@@ -182,9 +198,7 @@ def main():
         """
 
     if tools_available_str:
-        tools_available_str = (
-            f"<tools_available>{tools_available_str}</tools_available>"
-        )
+        tools_available_str = f"<tools_available>{tools_available_str}</tools_available>"
 
     console.print(
         '[bold yellow]Please input a problem statement for Nagato to solve then press the "Enter" key twice:[/bold yellow]'
@@ -209,9 +223,9 @@ def main():
         description="Generate objective given input description. Then formulate a plan with tasks to complete based on input description and objective.",
     )
 
-    coordinator_exchange = send_agent_request(
-        coordinator_agent, planner_task, problem_statement_prompt, [], 0.6, 2000
-    )
+    coordinator_exchange = send_agent_request(coordinator_agent, planner_task, problem_statement_prompt, [], 0.6, 2000)
+
+    print(f"Coordinator response: {coordinator_exchange.agent_response.content}")
 
     soup = BeautifulSoup(coordinator_exchange.agent_response.content, "html.parser")
     objective = soup.find("objective").get_text(strip=True)
@@ -251,11 +265,7 @@ def main():
     tasks_list: List[Task] = []
     for task in tasks:
         goal = task.find("goal").get_text(strip=True)
-        description = (
-            task.find("description").get_text(strip=True)
-            if task.find("description")
-            else ""
-        )
+        description = task.find("description").get_text(strip=True) if task.find("description") else ""
 
         # Find all the tools recommended in tools_recommended
         tools_recommended = task.find_all("tool")
@@ -266,25 +276,19 @@ def main():
         task = Task(goal=goal, description=description, tools_recommended=tools_recs)
         tasks_list.append(task)
 
-    mission = Mission(
-        problem_statement=problem_statement, objective=objective, tasks=tasks_list
-    )
+    mission = Mission(problem_statement=problem_statement, objective=objective, tasks=tasks_list)
     sleep(3)
 
     for task in mission.tasks:
         console.print(f"[bright_cyan] \n\n🤖 Current task: {task}\n\n[/bright_cyan]")
-        task_evaluator = SingleCriticEvaluator(
-            critic_agent=critic_agent, tracing_enabled=True
-        )
+        task_evaluator = SingleCriticEvaluator(critic_agent=critic_agent, tracing_enabled=True)
 
         task_runner = SingleAgentTaskRunner(
             previous_task=None,
             current_task=task,
             agents={"worker_agent": researcher_agent},
             tool_registry=tool_registry,
-            agent_tool_providers={
-                "worker_agent": get_agent_tool_provider(researcher_agent)
-            },
+            agent_tool_providers={"worker_agent": get_agent_tool_provider(researcher_agent)},
             task_evaluator=task_evaluator,
             tracing_enabled=True,
         )
@@ -306,9 +310,7 @@ def main():
         markdown_output_str += f"### Result\n\n{task.result.result}\n\n"
 
         markdown_output_str += f"### Result Assessment\n\n"
-        markdown_output_str += (
-            f"**Verdict**: {task.result.outcome.name.replace('_', ' ')}\n\n"
-        )
+        markdown_output_str += f"**Verdict**: {task.result.outcome.name.replace('_', ' ')}\n\n"
         if task.result.outcome != TaskOutcome.MEETS_REQUIREMENT:
             markdown_output_str += f"**Feedback**: {task.result.evaluation}\n\n"
 

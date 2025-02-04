@@ -12,9 +12,7 @@ class StructuredLogger:
     """
 
     @classmethod
-    def get_logger(
-        cls, bound_values: Dict[str, Any], default_log_level: int = logging.INFO
-    ) -> structlog.BoundLogger:
+    def get_logger(cls, bound_values: Dict[str, Any], default_log_level: int = logging.INFO) -> structlog.BoundLogger:
         """
         Returns a configured structlog logger instance.
         Creates and configures the logger on first call, then returns cached instance.

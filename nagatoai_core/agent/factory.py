@@ -32,7 +32,7 @@ def create_agent(api_key: str, model: str, role: str, role_description: str, nic
     :param nickname: The nickname of the agent.
     :return: The agent instance.
     """
-    if model.startswith("gpt") or model.startswith("o1"):
+    if model.startswith("gpt") or model.startswith("o1") or model.startswith("o3"):
         client = OpenAI(api_key=api_key)
         return OpenAIAgent(client, model, role, role_description, nickname)
 
@@ -44,7 +44,8 @@ def create_agent(api_key: str, model: str, role: str, role_description: str, nic
         client = Anthropic(api_key=api_key)
         return AnthropicAgent(client, model, role, role_description, nickname)
 
-    if model.startswith("llama-3"):
+    if model.startswith("groq-"):
+        model = model.replace("groq-", "")
         client = Groq(api_key=api_key)
         return GroqAgent(client, model, role, role_description, nickname)
 

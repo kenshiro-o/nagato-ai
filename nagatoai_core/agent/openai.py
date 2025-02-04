@@ -30,6 +30,7 @@ def extract_openai_model_family(model: str) -> str:
         "babbage",
         "ada",
         "o1",
+        "o3",
     ]
     for prefix in family_prefixes:
         if model.startswith(prefix):
