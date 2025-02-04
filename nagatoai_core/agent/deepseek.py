@@ -86,6 +86,10 @@ class DeepSeekAgent(Agent):
         response: Optional[ChatCompletion] = None
         # Reasoner model does not support tools nor temperature setting
         if self.model == REASONER_MODEL_NAME:
+            self.logger.debug(
+                "Sending request to DeepSeek Reasoner Agent",
+                messages=messages,
+            )
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -112,7 +116,7 @@ class DeepSeekAgent(Agent):
 
         if self.model == REASONER_MODEL_NAME:
             chain_of_thought = response.choices[0].message.reasoning_content
-            print(f"***** chain of thought: {chain_of_thought}")
+            self.logger.info("Chain of thought", chain_of_thought=chain_of_thought)
 
         response_text = response.choices[0].message.content
         tool_calls: List[ToolCall] = []
@@ -120,8 +124,11 @@ class DeepSeekAgent(Agent):
         if response.choices[0].message.tool_calls:
             response_text = response_text + "\n\n" if response_text else ""
             for tool_call in response.choices[0].message.tool_calls:
-                print(
-                    f"[DeepSeek Agent] Tool call requested: {tool_call.function.name} with id {tool_call.id} and parameters: {tool_call.function.arguments}"
+                self.logger.debug(
+                    "Tool call requested",
+                    tool_call_id=tool_call.id,
+                    tool_call_name=tool_call.function.name,
+                    tool_call_parameters=tool_call.function.arguments,
                 )
 
                 params_json = json.loads(tool_call.function.arguments)
@@ -140,9 +147,7 @@ class DeepSeekAgent(Agent):
 
         exchange = Exchange(
             chat_history=messages,
-            user_msg=Message(
-                sender=Sender.USER, content=prompt, created_at=msg_send_time
-            ),
+            user_msg=Message(sender=Sender.USER, content=prompt, created_at=msg_send_time),
             agent_response=Message(
                 sender=Sender.AGENT,
                 content=response_text,
@@ -184,6 +189,12 @@ class DeepSeekAgent(Agent):
             final_tool_result_content = ""
             for tool_result in tool_results:
                 tool_result_json = json.dumps(tool_result.result, indent=2)
+                self.logger.debug(
+                    "Tool result for DeepSeek Agent",
+                    tool_result_id=tool_result.id,
+                    tool_result_name=tool_result.name,
+                    tool_result_json=tool_result_json,
+                )
                 messages.append(
                     {
                         "role": "tool",
@@ -232,8 +243,10 @@ class DeepSeekAgent(Agent):
             return exchange
         except Exception as e:
             # Prettify the chat history for debugging
-            print(
-                f"⚠️ Error sending request to DeepSeek API. Full chat history: {json.dumps(messages, indent=2)}"
+            self.logger.error(
+                "Error sending request to DeepSeek API",
+                chat_history=messages,
+                error=str(e),
             )
             raise e
 

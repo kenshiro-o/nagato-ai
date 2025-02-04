@@ -1,5 +1,5 @@
 # Standard Library
-from datetime import datetime, timedelta
+import time
 from typing import Any, List, Optional, Type
 
 # Third Party
@@ -52,7 +52,9 @@ class ReadwiseHighightsListerTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = ReadwiseHighightsListerConfig
 
-    def get_highlights(self, config: ReadwiseHighightsListerConfig, url: str, page_size: int) -> Any:
+    def get_highlights(
+        self, config: ReadwiseHighightsListerConfig, url: str, page_size: int
+    ) -> Any:
         """
         Get all highlights from Readwise
         :return: The result of the list operation.
@@ -60,16 +62,17 @@ class ReadwiseHighightsListerTool(AbstractTool):
         headers = {
             "Authorization": f"Token {config.api_key}",
         }
-        params = {
-            "page_size": page_size,
-        }
+        params = {}
 
-        if config.from_datetime:
+        if "page_size" not in url:
+            params["page_size"] = page_size
+
+        if config.from_datetime and "updated__gt" not in url:
             from_datetime_dt = parse(config.from_datetime)
             from_datetime_dt_str = from_datetime_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
             params["updated__gt"] = from_datetime_dt_str
 
-        if config.to_datetime:
+        if config.to_datetime and "updated__lt" not in url:
             to_datetime_dt = parse(config.to_datetime)
             to_datetime_dt_str = to_datetime_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
             params["updated__lt"] = to_datetime_dt_str
@@ -86,7 +89,9 @@ class ReadwiseHighightsListerTool(AbstractTool):
         :return: The result of the list operation.
         """
         page_size = 50
-        response = self.get_highlights(config, f"{READWISE_API_URL}/highlights/", page_size)
+        response = self.get_highlights(
+            config, f"{READWISE_API_URL}/highlights/", page_size
+        )
         current_count = 0
 
         highlights = []
@@ -96,7 +101,9 @@ class ReadwiseHighightsListerTool(AbstractTool):
 
             for highlight in results:
                 highlight_tag_names = [tag["name"] for tag in highlight["tags"]]
-                if config.tags and not any(tag in highlight_tag_names for tag in config.tags):
+                if config.tags and not any(
+                    tag in highlight_tag_names for tag in config.tags
+                ):
                     continue
 
                 highlights.append(highlight)
@@ -106,6 +113,9 @@ class ReadwiseHighightsListerTool(AbstractTool):
 
             if not next_page:
                 break
+
+            # Sleep to avoid rate limiting
+            time.sleep(3)
 
             response = self.get_highlights(config, next_page, page_size)
 

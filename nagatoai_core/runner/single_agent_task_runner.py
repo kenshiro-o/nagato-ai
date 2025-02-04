@@ -25,6 +25,7 @@ from nagatoai_core.prompt.templates import (
 )
 from nagatoai_core.runner.task_runner import TaskRunner
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
+from nagatoai_core.common.structured_logger import StructuredLogger
 
 DEFAULT_AGENT_TEMPERATURE = 0.6
 
@@ -57,6 +58,7 @@ class SingleAgentTaskRunner(TaskRunner):
             raise ValueError("SingleAgentTaskRunner requires only one agent")
 
         self.langfuse = None if not self.tracing_enabled else Langfuse()
+        self.logger = StructuredLogger.get_logger({})
 
     def _run_tool_call(
         self,
@@ -244,7 +246,7 @@ class SingleAgentTaskRunner(TaskRunner):
                         f"**** Tool run result not in cache. Running tool... [tool-call={tool_call.name}, params={tool_call.parameters} ****"
                     )
 
-                print(f"*** Tool with name {tool_call.name} utput: {tool_output}")
+                print(f"*** Tool with name {tool_call.name} output: {tool_output}")
 
                 tool_result = ToolResult(
                     id=tool_call.id, name=tool_call.name, result=tool_output, error=None
@@ -336,14 +338,27 @@ class SingleAgentTaskRunner(TaskRunner):
 
             if self.current_task.result.outcome == TaskOutcome.MEETS_REQUIREMENT:
                 task_pass = True
-                print(f"✅ Task {self.current_task} has passed")
+                self.logger.info(
+                    "✅Task completed successfully",
+                    task_id=self.current_task.id,
+                    task_goal=self.current_task.goal,
+                    task_description=self.current_task.description,
+                )
             else:
                 task_retry_count += 1
                 if task_retry_count >= 3:
-                    print(
-                        f"Task {self.current_task} has been retried more than 3 times. Exiting..."
+                    self.logger.error(
+                        "❌ Task has been retried more than 3 times. Exiting...",
+                        task_id=self.current_task.id,
+                        task_goal=self.current_task.goal,
+                        task_description=self.current_task.description,
                     )
                     break
-                print(f"❌ Task {self.current_task} has failed. Retrying...")
+                self.logger.warning(
+                    "⚠️ Task has failed. Retrying...",
+                    task_id=self.current_task.id,
+                    task_goal=self.current_task.goal,
+                    task_description=self.current_task.description,
+                )
 
         return all_exchanges

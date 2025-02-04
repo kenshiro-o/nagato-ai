@@ -84,21 +84,21 @@ def main():
         "Coordinator Agent",
     )
 
-    researcher_agent = create_agent(
-        anthropic_api_key,
-        "claude-3-5-sonnet-20241022",
-        "Researcher",
-        RESEARCHER_SYSTEM_PROMPT,
-        "Researcher Agent",
-    )
-
     # researcher_agent = create_agent(
-    #     deepseek_api_key,
-    #     "deepseek-chat",
+    #     anthropic_api_key,
+    #     "claude-3-5-sonnet-20241022",
     #     "Researcher",
     #     RESEARCHER_SYSTEM_PROMPT,
     #     "Researcher Agent",
     # )
+
+    researcher_agent = create_agent(
+        deepseek_api_key,
+        "deepseek-chat",
+        "Researcher",
+        RESEARCHER_SYSTEM_PROMPT,
+        "Researcher Agent",
+    )
 
     # researcher_agent = create_agent(
     #     google_api_key,

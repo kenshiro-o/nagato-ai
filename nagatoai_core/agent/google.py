@@ -15,7 +15,14 @@ from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.google import GoogleToolProvider
 
 from .agent import Agent
-from .message import Exchange, Message, Sender, TokenStatsAndParams, ToolCall, ToolResult
+from .message import (
+    Exchange,
+    Message,
+    Sender,
+    TokenStatsAndParams,
+    ToolCall,
+    ToolResult,
+)
 
 
 def extract_google_model_family(model: str) -> str:
@@ -88,7 +95,10 @@ class GoogleAgent(Agent):
         """
         Prints contents of the messages list that we submit to the Gemini model.
         """
-        print(f"**** GEMINI MESSAGE: {json.dumps(self._serialize_message(messages), indent=2)} ****")
+        self.logger.debug(
+            "Gemini message",
+            gemini_message=json.dumps(self._serialize_message(messages), indent=2),
+        )
 
     def chat(
         self,
@@ -152,13 +162,17 @@ class GoogleAgent(Agent):
                 tool_call_msg = f"Tool call requested: function {fn_name} with parameters: {args_dict}"
                 response_text += f"{tool_call_msg}\n"
                 # Note - Gemini models do not provide an id per tool call - so we're going to use the function name instead
-                tool_calls.append(ToolCall(id=fn_name, name=fn_name, parameters=args_dict))
+                tool_calls.append(
+                    ToolCall(id=fn_name, name=fn_name, parameters=args_dict)
+                )
             else:
                 response_text += part.text
 
         exchange = Exchange(
             chat_history=self._serialize_message(messages),
-            user_msg=Message(sender=Sender.USER, content=prompt, created_at=msg_send_time),
+            user_msg=Message(
+                sender=Sender.USER, content=prompt, created_at=msg_send_time
+            ),
             agent_response=Message(
                 sender=Sender.AGENT,
                 content=response_text,
