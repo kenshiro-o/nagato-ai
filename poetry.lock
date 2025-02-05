@@ -1418,6 +1418,17 @@ toml = ["tomli (>=2.0.1)"]
 yaml = ["pyyaml (>=6.0.1)"]
 
 [[package]]
+name = "pydub"
+version = "0.25.1"
+description = "Manipulate audio with an simple and easy high level interface"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pydub-0.25.1-py2.py3-none-any.whl", hash = "sha256:65617e33033874b59d87db603aa1ed450633288aefead953b30bded59cb599a6"},
+    {file = "pydub-0.25.1.tar.gz", hash = "sha256:980a33ce9949cab2a569606b65674d748ecbca4f0796887fd6f46173a7b0d30f"},
+]
+
+[[package]]
 name = "pygments"
 version = "2.17.2"
 description = "Pygments is a syntax highlighting package written in Python."
@@ -1545,13 +1556,13 @@ files = [
 
 [[package]]
 name = "pytubefix"
-version = "8.6.0"
+version = "8.12.1"
 description = "Python3 library for downloading YouTube Videos."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pytubefix-8.6.0-py3-none-any.whl", hash = "sha256:ddead20322652c75b252cbc6c7080d4ad3fc7a4902ae542524908e0eccb9e37a"},
-    {file = "pytubefix-8.6.0.tar.gz", hash = "sha256:03e916802a3de0f668933887823693591e772a7bfcf6ee18474e0657955c5f94"},
+    {file = "pytubefix-8.12.1-py3-none-any.whl", hash = "sha256:1101463302b87c9a7172632232740413366919c4456255f5a85d114d0c60e0ec"},
+    {file = "pytubefix-8.12.1.tar.gz", hash = "sha256:64af1ce25543007b1eadf1e2e01363839b0e4dd3c62ca2ae008f46c5462a2c54"},
 ]
 
 [[package]]
@@ -2196,4 +2207,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "c6d3d11de7fdd1729fed166066a701b290fd6460d4137e1abbd44783ecd8b352"
+content-hash = "79c2baa82f4e6e837532d72fd5c9f25a96cef997c6a19b81999842c606212cc7"

@@ -1,6 +1,9 @@
 # Standard Library
 import os
 from typing import Type
+import tempfile
+import subprocess
+from pathlib import Path
 
 # Third Party
 from groq import Groq
@@ -63,6 +66,46 @@ class GroqWhisperTool(AbstractTool):
         """
     )
     args_schema: Type[BaseModel] = GroqWhisperConfig
+
+    def _preprocess_audio(self) -> Path:
+        """
+        Preprocess audio file to 16kHz mono FLAC using ffmpeg.
+        FLAC provides lossless compression for faster upload times.
+        :return: The path to the preprocessed audio file.
+        """
+        input_path = Path(self.config.file_path)
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input file not found: {input_path}")
+
+        with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as temp_file:
+            output_path = Path(temp_file.name)
+
+        print("Converting audio to 16kHz mono FLAC...")
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    input_path,
+                    "-ar",
+                    "16000",
+                    "-ac",
+                    "1",
+                    "-c:a",
+                    "flac",
+                    "-y",
+                    output_path,
+                ],
+                check=True,
+            )
+            return output_path
+        # We'll raise an error if our FFmpeg conversion fails
+        except subprocess.CalledProcessError as e:
+            output_path.unlink(missing_ok=True)
+            raise RuntimeError(f"FFmpeg conversion failed: {e.stderr}")
 
     def _run(self, config: GroqWhisperConfig) -> dict:
         """

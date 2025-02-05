@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 from pytubefix import YouTube
 from pytubefix.cli import on_progress
+from pytubefix import cipher
 
 # Nagato AI
 # Company Libraries
@@ -27,7 +28,7 @@ from nagatoai_core.tool.abstract_tool import AbstractTool
 # _default_clients["ANDROID_MUSIC"] = _default_clients["ANDROID_CREATOR"]
 
 
-def get_throttling_function_name(js: str) -> str:
+def get_throttling_function_name(js: str, js_url: str) -> str:
     """Extract the name of the function that computes the throttling parameter.
 
     :param str js:
@@ -97,6 +98,9 @@ class YouTubeVideoDownloadTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = YouTubeVideoDownloadConfig
 
+    def __init__(self):
+        super().__init__()
+
     def _run(self, config: YouTubeVideoDownloadConfig) -> str:
         """
         Downloads a video from YouTube using the given video ID and saves it to the specified output path with the specified file name.
@@ -104,11 +108,8 @@ class YouTubeVideoDownloadTool(AbstractTool):
         :return: The full path of the downloaded video file.
         """
         try:
-            # Construct the full YouTube URL
-            video_url = f"https://www.youtube.com/watch?v={config.video_id}"
-
-            # Create a YouTube object
-            yt = YouTube(video_url)
+            # Modify the YouTube object creation to use po_token
+            yt = YouTube(f"https://www.youtube.com/watch?v={config.video_id}")
 
             # Get the highest resolution progressive stream
             video = yt.streams.get_highest_resolution()

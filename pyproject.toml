@@ -36,6 +36,7 @@ chardet = "^5.2.0"
 scrapingbee = "^2.0.1"
 pytubefix = "^8.6.0"
 structlog = "^25.1.0"
+pydub = "^0.25.1"
 
 
 [tool.poetry.group.dev.dependencies]
