@@ -49,4 +49,4 @@ jobs:
       # - run: make lint-ci
 
       # Run tests
-      - run: make test
+      - run: make test-debug

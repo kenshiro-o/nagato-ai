@@ -1,7 +1,21 @@
-# conftest.py
+"""
+This module contains shared fixtures across all tests.
+"""
+
+# Standard Library
+import logging
+
+# Third Party
 import pytest
 
-from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDownloadTool, YouTubeVideoDownloadConfig
+# Nagato AI
+from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDownloadConfig, YouTubeVideoDownloadTool
+
+
+@pytest.fixture(autouse=True)
+def setup_logging():
+    """Configure logging for tests"""
+    logging.basicConfig(level=logging.DEBUG)
 
 
 @pytest.fixture(scope="session")

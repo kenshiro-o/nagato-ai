@@ -6,9 +6,8 @@ from typing import Type
 # Third Party
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
-from pytubefix import YouTube
+from pytubefix import YouTube, cipher
 from pytubefix.cli import on_progress
-from pytubefix import cipher
 
 # Nagato AI
 # Company Libraries

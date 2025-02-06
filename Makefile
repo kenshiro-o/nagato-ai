@@ -42,3 +42,7 @@ install-ci:
 .PHONY: test
 test:
 	$(POETRY) run pytest
+
+.PHONY: test-debug
+test-debug:
+	$(POETRY) run pytest --log-cli-level=DEBUG

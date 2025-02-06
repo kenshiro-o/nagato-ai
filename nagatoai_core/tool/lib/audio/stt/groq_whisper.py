@@ -1,18 +1,22 @@
 # Standard Library
+import json
 import os
-from typing import Type
-import tempfile
 import subprocess
+import tempfile
+import time
 from pathlib import Path
+from typing import Any, Dict, Type
 
 # Third Party
-from groq import Groq
+from groq import Groq, RateLimitError
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
 # Nagato AI
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
+from nagatoai_core.tool.common.audio.audio_segment_with_timestamps import AudioSegmentWithOffsets
+from nagatoai_core.tool.common.audio.utils import preprocess_audio, split_audio_in_chunks
 
 
 class GroqWhisperConfig(BaseSettings, BaseModel):
@@ -67,45 +71,44 @@ class GroqWhisperTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = GroqWhisperConfig
 
-    def _preprocess_audio(self) -> Path:
+    def _process_single_chunk(
+        self, client: Groq, chunk: AudioSegmentWithOffsets, config: GroqWhisperConfig
+    ) -> Dict[str, Any]:
         """
-        Preprocess audio file to 16kHz mono FLAC using ffmpeg.
-        FLAC provides lossless compression for faster upload times.
-        :return: The path to the preprocessed audio file.
+        Process a single chunk of audio using Whisper on Groq.
         """
-        input_path = Path(self.config.file_path)
-        if not input_path.exists():
-            raise FileNotFoundError(f"Input file not found: {input_path}")
+        while True:
+            with tempfile.NamedTemporaryFile(suffix=".flac") as temp_file:
+                chunk.audio.export(temp_file.name, format="flac")
 
-        with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as temp_file:
-            output_path = Path(temp_file.name)
+                try:
+                    result = client.audio.transcriptions.create(
+                        file=(os.path.basename(temp_file.name), open(temp_file.name, "rb")),
+                        model=config.model,
+                        language=config.language,
+                        response_format=config.response_format,
+                    )
 
-        print("Converting audio to 16kHz mono FLAC...")
-        try:
-            subprocess.run(
-                [
-                    "ffmpeg",
-                    "-hide_banner",
-                    "-loglevel",
-                    "error",
-                    "-i",
-                    input_path,
-                    "-ar",
-                    "16000",
-                    "-ac",
-                    "1",
-                    "-c:a",
-                    "flac",
-                    "-y",
-                    output_path,
-                ],
-                check=True,
-            )
-            return output_path
-        # We'll raise an error if our FFmpeg conversion fails
-        except subprocess.CalledProcessError as e:
-            output_path.unlink(missing_ok=True)
-            raise RuntimeError(f"FFmpeg conversion failed: {e.stderr}")
+                    output = {
+                        "text": result.text,
+                        "segments": result.segments,
+                        "from_second": chunk.from_second_offset,
+                        "to_second": chunk.to_second_offset,
+                    }
+
+                    if config.response_format == "verbose_json":
+                        output["segments"] = result.segments
+
+                    return output
+
+                except RateLimitError:
+                    print("Rate limit hit - retrying in 60 seconds...")
+                    time.sleep(60)
+                    continue
+
+                except Exception as e:
+                    print(f"Error transcribing chunk: {str(e)}")
+                    raise
 
     def _run(self, config: GroqWhisperConfig) -> dict:
         """
@@ -113,34 +116,44 @@ class GroqWhisperTool(AbstractTool):
         :param config: The configuration for the GroqWhisperTool.
         :return: A dictionary containing the transcription text and additional metadata.
         """
-        try:
-            if not os.path.exists(config.file_path):
-                return {"error": "File not found", "file_path": config.file_path}
+        if not os.path.exists(config.file_path):
+            raise FileNotFoundError(f"File not found: {config.file_path}")
 
+        try:
             client = Groq(api_key=config.api_key)
 
-            with open(config.file_path, "rb") as file:
-                transcription = client.audio.transcriptions.create(
-                    file=(os.path.basename(config.file_path), file.read()),
-                    model=config.model,
-                    prompt=config.prompt,
-                    response_format=config.response_format,
-                    language=config.language,
-                    temperature=config.temperature,
-                )
+            audio_preprocessed = preprocess_audio(config.file_path)
+            chunks = split_audio_in_chunks(audio_preprocessed)
 
-            output = {
-                "transcription": transcription.text,
-                "file_name": os.path.basename(config.file_path),
-                "model_used": config.model,
-                "language": config.language or "auto-detected",
-                "response_format": config.response_format,
-            }
+            transcription_results = []
+            for chunk in chunks:
+                transcription_results.append(self._process_single_chunk(client, chunk, config))
 
-            if config.response_format == "verbose_json":
-                output["segments"] = transcription.segments
+            # with open(config.file_path, "rb") as file:
+            #     transcription = client.audio.transcriptions.create(
+            #         file=(os.path.basename(config.file_path), file.read()),
+            #         model=config.model,
+            #         prompt=config.prompt,
+            #         response_format=config.response_format,
+            #         language=config.language,
+            #         temperature=config.temperature,
+            #     )
 
-            return output
+            print(json.dumps(transcription_results, indent=4))
+            return transcription_results
+
+            # output = {
+            #     "transcription": transcription.text,
+            #     "file_name": os.path.basename(config.file_path),
+            #     "model_used": config.model,
+            #     "language": config.language or "auto-detected",
+            #     "response_format": config.response_format,
+            # }
+
+            # if config.response_format == "verbose_json":
+            #     output["segments"] = transcription.segments
+
+            # return output
 
         except Exception as e:
             raise RuntimeError(f"Error transcribing audio/video file: {str(e)}")
