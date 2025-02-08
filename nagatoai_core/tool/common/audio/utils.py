@@ -1,4 +1,5 @@
 # Standard Library
+import string
 import subprocess
 import tempfile
 from pathlib import Path
@@ -116,3 +117,32 @@ def split_audio_in_chunks(
     finally:
         if processed_path:
             Path(processed_path).unlink(missing_ok=True)
+
+
+def find_longest_common_string_overlap(
+    text1: str, text2: str, ignore_leading_trailing_whitespace: bool = True, remove_punctuation: bool = True
+) -> int:
+    """
+    Calculate the length of the longest overlap between the end of text1 and the beginning of text2.
+    This overlap represents the longest common sequence shared at the boundary of the two segments.
+
+    :param text1: The first text to compare
+    :param text2: The second text to compare
+    :param ignore_leading_trailing_whitespace: Whether to ignore leading and trailing whitespace
+    :param remove_punctuation: Whether to remove punctuation
+    :return: The length of the longest overlap
+    """
+    if ignore_leading_trailing_whitespace:
+        text1 = text1.strip()
+        text2 = text2.strip()
+
+    # Also remove any punctuation from the text
+    if remove_punctuation:
+        text1 = text1.translate(str.maketrans("", "", string.punctuation))
+        text2 = text2.translate(str.maketrans("", "", string.punctuation))
+
+    max_overlap = min(len(text1), len(text2))
+    for length in range(max_overlap, 0, -1):
+        if text1[-length:] == text2[:length]:
+            return length
+    return 0

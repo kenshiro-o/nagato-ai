@@ -79,7 +79,7 @@ class YouTubeVideoDownloadConfig(BaseSettings, BaseModel):
     )
 
     file_name: str = Field(
-        None,
+        ...,
         description="The name of the file to save the video as. If not provided, the video's title will be used.",
     )
 

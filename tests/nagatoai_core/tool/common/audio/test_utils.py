@@ -6,7 +6,11 @@ import pytest
 
 # Nagato AI
 from nagatoai_core.tool.common.audio.audio_segment_with_timestamps import AudioSegmentWithOffsets
-from nagatoai_core.tool.common.audio.utils import preprocess_audio, split_audio_in_chunks
+from nagatoai_core.tool.common.audio.utils import (
+    find_longest_common_string_overlap,
+    preprocess_audio,
+    split_audio_in_chunks,
+)
 
 
 @pytest.fixture
@@ -97,3 +101,56 @@ def test_split_audio_in_chunks_file_not_found():
     """Test splitting audio with non-existent file raises FileNotFoundError"""
     with pytest.raises(FileNotFoundError):
         split_audio_in_chunks(Path("nonexistent_file.mp4"))
+
+
+def test_find_longest_common_string_overlap_different_lengths():
+    """Test overlaps with strings of different lengths"""
+    # Shorter overlap at end/start
+    assert find_longest_common_string_overlap("hello world", "world peace") == 5
+    # Longer first string
+    assert find_longest_common_string_overlap("this is a test string", "string theory") == 6
+    # Longer second string
+    assert find_longest_common_string_overlap("end of", "of the long string") == 2
+    # No overlap
+    assert find_longest_common_string_overlap("hello", "world") == 0
+
+
+def test_find_longest_common_string_overlap_with_punctuation():
+    """Test overlaps with punctuation marks"""
+    # Default behavior (remove_punctuation=True)
+    assert find_longest_common_string_overlap("end of sentence.", "sentence! starts", remove_punctuation=True) == 8
+    # Keep punctuation
+    assert find_longest_common_string_overlap("end of sentence.", "sentence! starts", remove_punctuation=False) == 0
+    # Mixed punctuation
+    assert find_longest_common_string_overlap("hello... world", "world!!! next", remove_punctuation=True) == 5
+
+
+def test_find_longest_common_string_overlap_whitespace():
+    """Test overlaps with various whitespace configurations"""
+    # Default behavior (ignore_leading_trailing_whitespace=True)
+    assert find_longest_common_string_overlap("  hello world  ", "world peace  ") == 5
+
+    # Don't ignore whitespace - it will match on the second whitespace in "  world" and and "world" itself
+    assert (
+        find_longest_common_string_overlap("hello world  ", "  world peace", ignore_leading_trailing_whitespace=False)
+        == 2
+    )
+    # Multiple spaces
+    assert (
+        find_longest_common_string_overlap("end   of    text", "text   begins", ignore_leading_trailing_whitespace=True)
+        == 4
+    )
+
+
+def test_find_longest_common_string_overlap_edge_cases():
+    """Test edge cases for overlap detection"""
+    # Empty strings
+    assert find_longest_common_string_overlap("", "") == 0
+    assert find_longest_common_string_overlap("hello", "") == 0
+    assert find_longest_common_string_overlap("", "world") == 0
+    # Single character overlap
+    assert find_longest_common_string_overlap("a", "a") == 1
+    # Complete overlap (identical strings)
+    assert find_longest_common_string_overlap("hello", "hello") == 5
+    # Case sensitivity
+    assert find_longest_common_string_overlap("Hello World", "world peace") == 0

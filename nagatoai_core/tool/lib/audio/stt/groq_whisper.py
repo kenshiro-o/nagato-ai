@@ -1,11 +1,10 @@
 # Standard Library
 import json
+import logging
 import os
-import subprocess
 import tempfile
 import time
-from pathlib import Path
-from typing import Any, Dict, Type
+from typing import Any, Dict, List, Tuple, Type
 
 # Third Party
 from groq import Groq, RateLimitError
@@ -16,7 +15,11 @@ from pydantic_settings import BaseSettings
 # Company Libraries
 from nagatoai_core.tool.abstract_tool import AbstractTool
 from nagatoai_core.tool.common.audio.audio_segment_with_timestamps import AudioSegmentWithOffsets
-from nagatoai_core.tool.common.audio.utils import preprocess_audio, split_audio_in_chunks
+from nagatoai_core.tool.common.audio.utils import (
+    find_longest_common_string_overlap,
+    preprocess_audio,
+    split_audio_in_chunks,
+)
 
 
 class GroqWhisperConfig(BaseSettings, BaseModel):
@@ -71,6 +74,100 @@ class GroqWhisperTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = GroqWhisperConfig
 
+    def combine_segments_from_overlapping_chunks(
+        self,
+        chunk_a: Tuple[AudioSegmentWithOffsets, Dict[str, Any]],
+        chunk_b: Tuple[AudioSegmentWithOffsets, Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Combine segments from two overlapping chunks.
+        """
+        segments_a = chunk_a[1]["segments"]
+        segments_b = chunk_b[1]["segments"]
+
+        all_segments: List[Dict[str, Any]] = segments_a + segments_b
+
+        # Find overlapping segments
+        overlapping_segments: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
+        for segment_a in segments_a:
+            for segment_b in segments_b:
+                if segment_a["end"] > segment_b["start"] and segment_a["start"] < segment_b["end"]:
+                    overlapping_segments.append((segment_a, segment_b))
+
+                    # If the segments are overlapping, remove them from all segments for now
+                    all_segments = [s for s in all_segments if s != segment_a and s != segment_b]
+
+        # Merge overlapping segments
+        merged_segments = []
+        for segment_a, segment_b in overlapping_segments:
+            previous_merged_segment = merged_segments[-1] if merged_segments else None
+
+            if (
+                previous_merged_segment
+                and previous_merged_segment["start"] < segment_b["start"]
+                and previous_merged_segment["end"] >= segment_b["end"]
+            ):
+                logging.debug(
+                    f"⚠️ Segments drifting not merging, segment_a: {json.dumps(segment_a, indent=2)}, segment_b: {json.dumps(segment_b, indent=2)}"
+                )
+                # merged_segments.append(segment_b)
+                continue
+
+            if (
+                previous_merged_segment
+                and previous_merged_segment["start"] == segment_b["start"]
+                and previous_merged_segment["end"] == segment_b["end"]
+            ):
+                logging.debug(
+                    f"❌ Previous merged segment start is equal to segment_b start (and end); not doing any merging, segment_a: {json.dumps(segment_a, indent=2)}, segment_b: {json.dumps(segment_b, indent=2)}"
+                )
+                continue
+
+            if previous_merged_segment and previous_merged_segment["end"] > segment_a["start"]:
+                logging.debug(
+                    f"🎯 Previous merged segment end is greater than segment_a start; only using segment b, segment_a: {json.dumps(segment_a, indent=2)}, segment_b: {json.dumps(segment_b, indent=2)}"
+                )
+                merged_segments.append(segment_b)
+                continue
+
+            # Otherwise we can merge the segments
+            merged_segment = self.merge_overlapping_segments(segment_a, segment_b)
+            merged_segments.append(merged_segment)
+            logging.debug(
+                f"🚀 Merged non-drifting segments, segment_a: {json.dumps(segment_a, indent=2)}, segment_b: {json.dumps(segment_b, indent=2)}, merged_segment: {json.dumps(merged_segment, indent=2)}"
+            )
+
+        all_segments = merged_segments + all_segments
+
+        # Sort the segments by start time
+        all_segments = sorted(all_segments, key=lambda x: x["start"])
+
+        return all_segments
+
+    def merge_overlapping_segments(self, segment_a: Dict[str, Any], segment_b: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Merge two overlapping segments by identifying and using the longest common overlap in their 'text' fields.
+        The merged segment preserves the start time from segment_a and the end time from segment_b.
+
+        :param segment_a: The first segment to merge
+        :param segment_b: The second segment to merge
+        :return: The merged segment
+        """
+        text_a = segment_a.get("text", "")
+        text_b = segment_b.get("text", "")
+
+        # Determine the overlapping length based on the longest common sequence at the boundary.
+        overlap_len = find_longest_common_string_overlap(text_a, text_b)
+
+        # Merge the texts by appending the non-overlapping portion of text_b to text_a.
+        merged_text = text_a + text_b[overlap_len:]
+
+        # Create the merged segment. We assume 'segment_a' provides the initial timing and metadata,
+        # so we update its 'text' and use segment_b's 'end' value.
+        merged_segment = segment_a.copy()
+        merged_segment.update({"text": merged_text, "end": segment_b.get("end", segment_a.get("end"))})
+        return merged_segment
+
     def _process_single_chunk(
         self, client: Groq, chunk: AudioSegmentWithOffsets, config: GroqWhisperConfig
     ) -> Dict[str, Any]:
@@ -123,37 +220,49 @@ class GroqWhisperTool(AbstractTool):
             client = Groq(api_key=config.api_key)
 
             audio_preprocessed = preprocess_audio(config.file_path)
-            chunks = split_audio_in_chunks(audio_preprocessed)
+            chunk_length_seconds = 600
+            overlap_seconds = 10
+            chunks = split_audio_in_chunks(audio_preprocessed, chunk_length_seconds, overlap_seconds)
 
-            transcription_results = []
-            for chunk in chunks:
-                transcription_results.append(self._process_single_chunk(client, chunk, config))
+            transcription_results_with_chunks: List[Tuple[AudioSegmentWithOffsets, Dict[str, Any]]] = []
+            all_combined_segments: List[Dict[str, Any]] = []
+            for i, chunk in enumerate(chunks):
+                transcribed_chunk = self._process_single_chunk(client, chunk, config)
+                transcription_results_with_chunks.append((chunk, transcribed_chunk))
 
-            # with open(config.file_path, "rb") as file:
-            #     transcription = client.audio.transcriptions.create(
-            #         file=(os.path.basename(config.file_path), file.read()),
-            #         model=config.model,
-            #         prompt=config.prompt,
-            #         response_format=config.response_format,
-            #         language=config.language,
-            #         temperature=config.temperature,
-            #     )
+                if not "segments" in transcribed_chunk:
+                    continue
 
-            print(json.dumps(transcription_results, indent=4))
-            return transcription_results
+                # Offset the start and end of each segment based on overlap and chunk index
+                for segment in transcribed_chunk["segments"]:
+                    segment["start"] += i * (chunk_length_seconds - overlap_seconds)
+                    segment["end"] += i * (chunk_length_seconds - overlap_seconds)
 
-            # output = {
-            #     "transcription": transcription.text,
-            #     "file_name": os.path.basename(config.file_path),
-            #     "model_used": config.model,
-            #     "language": config.language or "auto-detected",
-            #     "response_format": config.response_format,
-            # }
+                if i > 0:
+                    combined_segments = self.combine_segments_from_overlapping_chunks(
+                        transcription_results_with_chunks[i - 1], transcription_results_with_chunks[i]
+                    )
+                    # logging.info(f"Combined segments: {json.dumps(combined_segments, indent=2)}")
+                    all_combined_segments.extend(combined_segments)
 
-            # if config.response_format == "verbose_json":
-            #     output["segments"] = transcription.segments
+                output = {
+                    "file_name": os.path.basename(config.file_path),
+                    "model_used": config.model,
+                    "language": config.language or "auto-detected",
+                    "response_format": config.response_format,
+                }
 
-            # return output
+            # Special case for when there is only one chunk since no segment merging is required
+            if len(transcription_results_with_chunks) == 1:
+                all_combined_segments = transcription_results_with_chunks[0][1]["segments"]
+                output["full_transcription"] = transcription_results_with_chunks[0][1]["text"]
+            else:
+                output["full_transcription"] = " ".join([segment["text"] for segment in all_combined_segments])
+
+            if config.response_format == "verbose_json":
+                output["segments"] = all_combined_segments
+
+            return output
 
         except Exception as e:
             raise RuntimeError(f"Error transcribing audio/video file: {str(e)}")

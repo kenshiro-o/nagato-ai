@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+from typing import Dict, List
 
 # Third Party
 import pytest
@@ -34,20 +35,32 @@ def test_groq_whisper_transcription_success(youtube_video):
     result = tool._run(config)
 
     # Print result for debugging
-    logging.info(f"Transcription result: {json.dumps(result, indent=2)}")
+    logging.debug(f"Transcription result: {json.dumps(result, indent=2)}")
 
     # Assert
-    assert isinstance(result, list)
-    assert len(result) > 0
+    assert isinstance(result, Dict)
+    assert "full_transcription" in result
+    assert "segments" in result
+    assert "file_name" in result
 
-    # Check first chunk's structure
-    first_chunk = result[0]
-    assert "text" in first_chunk
-    assert "segments" in first_chunk
-    assert "from_second" in first_chunk
-    assert "to_second" in first_chunk
-    assert isinstance(first_chunk["text"], str)
-    assert len(first_chunk["text"]) > 0
+    assert result["model_used"] == "whisper-large-v3"
+    assert result["language"] == "en"
+    assert result["response_format"] == "verbose_json"
+
+    # Check the segments
+    assert len(result["segments"]) > 0
+    first_segment = result["segments"][0]
+
+    logging.debug(f"First segment: {json.dumps(first_segment, indent=2)}")
+
+    assert "start" in first_segment and isinstance(first_segment["start"], int | float)
+    assert "end" in first_segment and isinstance(first_segment["end"], int | float)
+    assert "text" in first_segment and isinstance(first_segment["text"], str)
+    assert len(first_segment["text"]) > 0
+
+    # Save the transcription to a file
+    with open("./outputs/test_groq_whisper_transcription.txt", "w") as f:
+        f.write(json.dumps(result, indent=2))
 
 
 def test_groq_whisper_file_not_found():
