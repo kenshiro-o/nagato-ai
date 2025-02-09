@@ -97,6 +97,8 @@ class YouTubeVideoDownloadTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = YouTubeVideoDownloadConfig
 
+    ci_cd_mode: bool = False
+
     def __init__(self):
         super().__init__()
 
@@ -108,7 +110,10 @@ class YouTubeVideoDownloadTool(AbstractTool):
         """
         try:
             # Modify the YouTube object creation to use po_token
-            yt = YouTube(f"https://www.youtube.com/watch?v={config.video_id}")
+            if self.ci_cd_mode:
+                yt = YouTube(f"https://www.youtube.com/watch?v={config.video_id}", "WEB")
+            else:
+                yt = YouTube(f"https://www.youtube.com/watch?v={config.video_id}")
 
             # Get the highest resolution progressive stream
             video = yt.streams.get_highest_resolution()
