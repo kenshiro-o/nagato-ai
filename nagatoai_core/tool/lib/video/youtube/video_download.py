@@ -1,7 +1,7 @@
 # Standard Library
 import os
 import re
-from typing import Type
+from typing import Optional, Type
 
 # Third Party
 from pydantic import BaseModel, Field
@@ -97,7 +97,7 @@ class YouTubeVideoDownloadTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = YouTubeVideoDownloadConfig
 
-    ci_cd_mode: bool = False
+    po_token_file: Optional[str] = None
 
     def __init__(self):
         super().__init__()
@@ -110,8 +110,12 @@ class YouTubeVideoDownloadTool(AbstractTool):
         """
         try:
             # Modify the YouTube object creation to use po_token
-            if self.ci_cd_mode:
-                yt = YouTube(f"https://www.youtube.com/watch?v={config.video_id}", "WEB", use_po_token=True)
+            if self.po_token_file:
+                yt = YouTube(
+                    f"https://www.youtube.com/watch?v={config.video_id}",
+                    use_po_token=True,
+                    token_file=self.po_token_file,
+                )
             else:
                 yt = YouTube(f"https://www.youtube.com/watch?v={config.video_id}")
 

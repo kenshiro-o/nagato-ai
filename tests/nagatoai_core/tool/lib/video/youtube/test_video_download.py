@@ -18,7 +18,7 @@ def temp_output_dir(tmp_path):
 def video_download_tool():
     """Create an instance of the YouTubeVideoDownloadTool"""
     tool = YouTubeVideoDownloadTool()
-    tool.ci_cd_mode = True
+    tool.po_token_file = "./tests/data/youtube_po_token.json"
     return tool
 
 

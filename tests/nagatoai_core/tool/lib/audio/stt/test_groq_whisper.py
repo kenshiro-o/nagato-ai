@@ -58,10 +58,6 @@ def test_groq_whisper_transcription_success(youtube_video):
     assert "text" in first_segment and isinstance(first_segment["text"], str)
     assert len(first_segment["text"]) > 0
 
-    # Save the transcription to a file
-    with open("./outputs/test_groq_whisper_transcription.txt", "w") as f:
-        f.write(json.dumps(result, indent=2))
-
 
 def test_groq_whisper_file_not_found():
     """Test transcription with non-existent file."""
