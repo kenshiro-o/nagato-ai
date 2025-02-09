@@ -60,6 +60,11 @@ class GroqWhisperConfig(BaseSettings, BaseModel):
         description="The sampling temperature for the model. Default is 0.0.",
     )
 
+    keep_technical_information: bool = Field(
+        False,
+        description="Whether to keep technical information in the transcription result (e.g. tokens, temperature, avg_logprob, etc. ). Default is False.",
+    )
+
 
 class GroqWhisperTool(AbstractTool):
     """
@@ -261,6 +266,17 @@ class GroqWhisperTool(AbstractTool):
 
             if config.response_format == "verbose_json":
                 output["segments"] = all_combined_segments
+
+                if not config.keep_technical_information:
+                    # Remove tokens, temperature, avg_logprob, compression_ratio, no_speech_prob from segments
+                    for segment in output["segments"]:
+                        segment.pop("id", None)
+                        segment.pop("seek", None)
+                        segment.pop("tokens", None)
+                        segment.pop("temperature", None)
+                        segment.pop("avg_logprob", None)
+                        segment.pop("compression_ratio", None)
+                        segment.pop("no_speech_prob", None)
 
             return output
 
