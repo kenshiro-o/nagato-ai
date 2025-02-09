@@ -1,12 +1,12 @@
 # Standard Library
 import os
 import re
-from typing import Type
+from typing import Optional, Type
 
 # Third Party
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
-from pytubefix import YouTube
+from pytubefix import YouTube, cipher
 from pytubefix.cli import on_progress
 
 # Nagato AI
@@ -27,7 +27,7 @@ from nagatoai_core.tool.abstract_tool import AbstractTool
 # _default_clients["ANDROID_MUSIC"] = _default_clients["ANDROID_CREATOR"]
 
 
-def get_throttling_function_name(js: str) -> str:
+def get_throttling_function_name(js: str, js_url: str) -> str:
     """Extract the name of the function that computes the throttling parameter.
 
     :param str js:
@@ -79,7 +79,7 @@ class YouTubeVideoDownloadConfig(BaseSettings, BaseModel):
     )
 
     file_name: str = Field(
-        None,
+        ...,
         description="The name of the file to save the video as. If not provided, the video's title will be used.",
     )
 
@@ -97,6 +97,11 @@ class YouTubeVideoDownloadTool(AbstractTool):
     )
     args_schema: Type[BaseModel] = YouTubeVideoDownloadConfig
 
+    po_token_file: Optional[str] = None
+
+    def __init__(self):
+        super().__init__()
+
     def _run(self, config: YouTubeVideoDownloadConfig) -> str:
         """
         Downloads a video from YouTube using the given video ID and saves it to the specified output path with the specified file name.
@@ -104,11 +109,16 @@ class YouTubeVideoDownloadTool(AbstractTool):
         :return: The full path of the downloaded video file.
         """
         try:
-            # Construct the full YouTube URL
-            video_url = f"https://www.youtube.com/watch?v={config.video_id}"
-
-            # Create a YouTube object
-            yt = YouTube(video_url)
+            # Modify the YouTube object creation to use po_token
+            if self.po_token_file:
+                yt = YouTube(
+                    f"https://www.youtube.com/watch?v={config.video_id}",
+                    "WEB",
+                    use_po_token=True,
+                    token_file=self.po_token_file,
+                )
+            else:
+                yt = YouTube(f"https://www.youtube.com/watch?v={config.video_id}")
 
             # Get the highest resolution progressive stream
             video = yt.streams.get_highest_resolution()
