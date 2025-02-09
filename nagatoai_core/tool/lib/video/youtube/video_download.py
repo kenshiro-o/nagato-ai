@@ -111,7 +111,7 @@ class YouTubeVideoDownloadTool(AbstractTool):
         try:
             # Modify the YouTube object creation to use po_token
             if self.ci_cd_mode:
-                yt = YouTube(f"https://www.youtube.com/watch?v={config.video_id}", "WEB")
+                yt = YouTube(f"https://www.youtube.com/watch?v={config.video_id}", "WEB", use_po_token=True)
             else:
                 yt = YouTube(f"https://www.youtube.com/watch?v={config.video_id}")
 
