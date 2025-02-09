@@ -242,7 +242,7 @@ class GroqWhisperTool(AbstractTool):
                     combined_segments = self.combine_segments_from_overlapping_chunks(
                         transcription_results_with_chunks[i - 1], transcription_results_with_chunks[i]
                     )
-                    # logging.info(f"Combined segments: {json.dumps(combined_segments, indent=2)}")
+                    logging.debug(f"Combined segments: {json.dumps(combined_segments, indent=2)}")
                     all_combined_segments.extend(combined_segments)
 
                 output = {

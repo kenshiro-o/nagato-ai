@@ -26,6 +26,9 @@ jobs:
             python-version: '3.12'
             architecture: 'x64'
 
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: cache poetry version
         id: cached-poetry
         uses: actions/cache@v2
