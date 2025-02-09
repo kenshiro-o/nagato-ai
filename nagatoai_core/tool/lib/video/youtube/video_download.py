@@ -113,6 +113,7 @@ class YouTubeVideoDownloadTool(AbstractTool):
             if self.po_token_file:
                 yt = YouTube(
                     f"https://www.youtube.com/watch?v={config.video_id}",
+                    "WEB",
                     use_po_token=True,
                     token_file=self.po_token_file,
                 )
