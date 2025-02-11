@@ -108,9 +108,12 @@ class AgentParamConverter(BaseModel):
             {target_schema}
         </target_schema>
 
-        Please specify the result inside the <params_instance> tag:
+        Please specify the result inside the <params_instance> tag.
+        Make sure that we only have valid json inside the tag - for instance do not prefix the json with ```json or ```.
         """
 
+        params_instance: str = ""
+        raw_response: str = ""
         try:
             input_data = params_data["input_data"]
             target_schema = params_data["target_schema"]
@@ -118,13 +121,13 @@ class AgentParamConverter(BaseModel):
             full_prompt = conv_prompt.format(input_data=input_data, target_schema=target_schema)
 
             exchange = self.agent.chat(None, full_prompt, [], 0.6, 2000)
-            resp = exchange.agent_response.content
+            raw_response = exchange.agent_response.content
 
             # print(f"**** Full prompt: {full_prompt}")
             # print(f"**** Response: {resp}")
 
             # Extract data from params_instance tag
-            soup = BeautifulSoup(resp, "html.parser")
+            soup = BeautifulSoup(raw_response, "html.parser")
             params_instance = soup.find("params_instance").get_text(strip=True)
 
             params_json = json.loads(params_instance)
@@ -135,5 +138,5 @@ class AgentParamConverter(BaseModel):
             return params_json
         except Exception as e:
             print(traceback.format_exc())
-            print(f"Error converting data {params_data}:  {e}")
+            print(f"Error converting data {params_data}. Got raw response: {raw_response}, and error: {e}")
             raise e

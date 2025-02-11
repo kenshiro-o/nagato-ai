@@ -15,6 +15,7 @@ from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDown
 from nagatoai_core.tool.lib.video.clip import VideoClipTool
 from nagatoai_core.tool.lib.audio.stt.assemblyai import AssemblyAITranscriptionTool
 from nagatoai_core.tool.lib.audio.video_to_mp3 import VideoToMP3Tool
+from nagatoai_core.tool.lib.audio.stt.groq_whisper import GroqWhisperTool
 from nagatoai_core.prompt.template.prompt_template import PromptTemplate
 
 
@@ -52,9 +53,7 @@ def main():
     #     adapter_fn=v2mp3_param_conv,
     # )
 
-    audio_extr_link = ToolLink(
-        id=str(uuid.uuid4()), name="Audio Extraction", tool=VideoToMP3Tool
-    )
+    audio_extr_link = ToolLink(id=str(uuid.uuid4()), name="Audio Extraction", tool=VideoToMP3Tool)
 
     # def transcribe_param_conv(audio_data: Dict) -> Dict:
     #     """
@@ -79,29 +78,35 @@ def main():
         tool=AssemblyAITranscriptionTool,
     )
 
-    worker_agent = create_agent(
-        anthropic_api_key,
-        "claude-3-5-sonnet-20240620",
-        "Worker agent",
-        """
-        You are a helpful assistant adept at analysing transcripts from podcasts and identifying the most important parts.
-        """,
-        "Worker",
+    groq_whisper_transcription_link = ToolLink(
+        id=str(uuid.uuid4()),
+        name="Groq Whisper Transcription",
+        tool=GroqWhisperTool,
     )
 
-    open_ai_worker_agent = create_agent(
-        openai_api_key,
-        "o1-preview-2024-09-12",
-        "Worker agent",
-        """
-        You are a helpful assistant adept at analysing transcripts from podcasts and identifying the most important parts.
-        """,
-        "Worker",
-    )
+    # worker_agent = create_agent(
+    #     anthropic_api_key,
+    #     "claude-3-5-sonnet-20240620",
+    #     "Worker agent",
+    #     """
+    #     You are a helpful assistant adept at analysing transcripts from podcasts and identifying the most important parts.
+    #     """,
+    #     "Worker",
+    # )
+
+    # open_ai_worker_agent = create_agent(
+    #     openai_api_key,
+    #     "o1-preview-2024-09-12",
+    #     "Worker agent",
+    #     """
+    #     You are a helpful assistant adept at analysing transcripts from podcasts and identifying the most important parts.
+    #     """,
+    #     "Worker",
+    # )
 
     gemini_worker_agent = create_agent(
         google_api_key,
-        "gemini-2.0-flash-exp",
+        "gemini-2.0-flash",
         "Worker agent",
         """
         You are a helpful assistant adept at analysing transcripts from podcasts and identifying the most important parts.
@@ -121,6 +126,7 @@ def main():
         2. You will present your analysis in the following format:
         <key_moments>
             <key_moment>
+                <reasoning></reasoning>
                 <transcript></transcript>
                 <from_timestamp></from_timestamp>
                 <to_timestamp></to_timestamp>
@@ -141,6 +147,7 @@ def main():
         a. Copy the selected sentences verbatim from the transcript and place them inside the <transcript> tags.
         b. Put the start timestamp inside the <from_timestamp> tags.
         c. Put the end timestamp inside the <to_timestamp> tags.
+        d. Put the reasoning for why you selected the sentence inside the <reasoning> tags.
 
         6. Guidelines for soundbites:
         - Soundbites can be composed of multiple contiguous sentences.
@@ -157,9 +164,9 @@ def main():
     )
 
     agent_soundbite_extractor_link = AgentLink(
-        agent=worker_agent,
+        # agent=worker_agent,
         # agent=open_ai_worker_agent,
-        # agent=gemini_worker_agent,
+        agent=gemini_worker_agent,
         input_prompt_template=wa_prompt_template,
     )
 
@@ -176,11 +183,12 @@ def main():
             # tr = key_moment.find("transcript").text
             from_ts = key_moment.find("from_timestamp").text
             to_ts = key_moment.find("to_timestamp").text
+            reasoning = key_moment.find("reasoning").text
             key_moments_list.append(
                 {
-                    # "transcript": tr,
                     "from_timestamp": from_ts,
                     "to_timestamp": to_ts,
+                    "reasoning": reasoning,
                     "full_path": f"./media/{video_name}",
                     "output_path_prefix": f"clip_",
                     "output_path_suffix": f"_{from_ts}s_{to_ts}s",
@@ -200,7 +208,8 @@ def main():
         """
         return {
             # "utterances": transcribe_output["utterances"],
-            "sentences": transcribe_output["sentences"],
+            # "sentences": transcribe_output["sentences"],
+            "sentences": transcribe_output["segments"],
             "file_name": transcribe_output["file_name"],
         }
 
@@ -248,8 +257,9 @@ def main():
         agent_param_conv_link=agnt_conv_link,
         links=[
             yt_tool_link,
-            audio_extr_link,
-            transcribe_link,
+            # audio_extr_link,
+            # transcribe_link,
+            groq_whisper_transcription_link,
             utterances_adaptor,
             agent_soundbite_extractor_link,
             km_adapter,

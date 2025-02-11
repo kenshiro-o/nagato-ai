@@ -26,6 +26,7 @@ def extract_google_model_family(model: str) -> str:
     family_prefixes = [
         "gemini-1.0",
         "gemini-1.5",
+        "gemini-2.0",
         "gemini-pro-vision",
     ]
     for prefix in family_prefixes:
