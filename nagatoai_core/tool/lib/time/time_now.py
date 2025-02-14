@@ -1,5 +1,5 @@
 # Standard Library
-from datetime import datetime, timedelta
+from datetime import datetime, UTC
 from typing import Any, Type
 
 # Third Party
@@ -15,7 +15,10 @@ class TimeNowConfig(BaseModel):
     TimeNowConfig represents the configuration for the TimeNowTool.
     """
 
-    pass
+    use_utc_timezone: bool = Field(
+        True,
+        description="Whether to use the UTC timezone.",
+    )
 
 
 class TimeNowTool(AbstractTool):
@@ -33,4 +36,7 @@ class TimeNowTool(AbstractTool):
         :param config: The configuration for the tool.
         :return: The UTC time now in ISO
         """
-        return datetime.utcnow().isoformat()
+        if config.use_utc_timezone:
+            return datetime.now(UTC).isoformat()
+        else:
+            return datetime.now().isoformat()

@@ -4,18 +4,18 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 # Third Party
-import google.ai.generativelanguage as glm
-import google.generativeai as genai
+from google import genai
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.struct_pb2 import Struct
+from google.genai import types
 
 # Nagato AI
 # Company Libraries
 from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.google import GoogleToolProvider
 
-from .agent import Agent
-from .message import Exchange, Message, Sender, TokenStatsAndParams, ToolCall, ToolResult
+from nagatoai_core.agent.agent import Agent
+from nagatoai_core.agent.message import Exchange, Message, Sender, TokenStatsAndParams, ToolCall, ToolResult
 
 
 def extract_google_model_family(model: str) -> str:
@@ -39,7 +39,7 @@ def extract_google_model_family(model: str) -> str:
 class GoogleAgent(Agent):
     def __init__(
         self,
-        client: genai.GenerativeModel,
+        client: genai.Client,
         model: str,
         role: str,
         role_description: str,
@@ -111,54 +111,72 @@ class GoogleAgent(Agent):
         :param max_tokens: The maximum number of tokens to generate.
         :return: Exchange object containing the user message and the agent response."""
         previous_messages = self._build_chat_history()
-        current_message = {
-            "role": "user",
-            "parts": [prompt],
-        }
+        current_message = types.Content(parts=[types.Part.from_text(text=prompt)], role="user")
         messages = previous_messages + [current_message]
 
-        # Gemini models do not support a separate "system" role...
-        # so we prepend the role description to the user message to act as the system prompt
-        messages[0]["parts"].insert(0, f"---\n{self.role_description}---\n")
+        response: Optional[types.GenerateContentResponse] = None
 
-        response: Optional[genai.types.GenerateContentResponse] = None
-
-        gen_config = genai.types.GenerationConfig(
-            candidate_count=1, max_output_tokens=max_tokens, temperature=temperature
+        gen_config = types.GenerateContentConfig(
+            system_instruction=self.role_description,
+            candidate_count=1,
+            max_output_tokens=max_tokens,
+            temperature=temperature,
+            tools=[types.Tool(function_declarations=[tool.schema()]) for tool in tools] if len(tools) > 0 else None,
         )
+
+        # if len(tools) > 0:
+        #     gen_config.tools = [tool.schema() for tool in tools]
 
         # Uncomment if you want to debug
         # self._print_messages(messages)
 
+        self.logger.debug(
+            "Gemini message",
+            gemini_message=messages,
+        )
+
         msg_send_time = datetime.now(timezone.utc)
-        if len(tools) > 0:
-            response = self.client.generate_content(
-                messages,
-                generation_config=gen_config,
-                tools=[tool.schema() for tool in tools],
-            )
-        else:
-            response = self.client.generate_content(
-                messages,
-                generation_config=gen_config,
-            )
+
+        response = self.client.models.generate_content(
+            model=self.model,
+            config=gen_config,
+            contents=messages,
+        )
+
         msg_receive_time = datetime.now(timezone.utc)
 
         # TODO - Implement logic to handle tool call responses
+        self.logger.debug(
+            "Gemini response",
+            gemini_response=response,
+        )
 
         response_text: str = ""
+
         tool_calls: List[ToolCall] = []
 
-        for part in response.parts:
-            if fn := part.function_call:
+        fn_call_inputs = []
+        for tool in tools:
+            fn_call_inputs.append(tool.schema())
+
+        # print(
+        #     f"**** GEMINI INPUT MESSAGE: {self.messages, indent=2)} and function call inputs: {json.dumps(fn_call_inputs, indent=2)}"
+        # )
+        # print(f"**** GEMINI RESPONSE: {json.dumps(response, indent=2)}")
+
+        if response.function_calls:
+            for fn in response.function_calls:
                 fn_name = fn.name
+                # Note - Gemini models do not provide an id per tool call - so we're going to use the function name instead
+                fn_id = fn.id if fn.id else fn.name
                 args_dict = {k: v for k, v in fn.args.items()}
                 tool_call_msg = f"Tool call requested: function {fn_name} with parameters: {args_dict}"
-                response_text += f"{tool_call_msg}\n"
-                # Note - Gemini models do not provide an id per tool call - so we're going to use the function name instead
-                tool_calls.append(ToolCall(id=fn_name, name=fn_name, parameters=args_dict))
-            else:
-                response_text += part.text
+                print(tool_call_msg)
+                # response_text += f"{tool_call_msg}\n"
+            tool_calls.append(ToolCall(id=fn_id, name=fn_name, parameters=args_dict))
+        else:
+            # When there are tool calls, there is often no text response from the model
+            response_text += response.text
 
         exchange = Exchange(
             chat_history=self._serialize_message(messages),
@@ -201,45 +219,52 @@ class GoogleAgent(Agent):
         messages = self._build_chat_history()
 
         final_tool_result_content = ""
-        fn_res_result_parts = []
+        fn_res_result_parts: List[types.Part] = []
         for tool_result in tool_results:
-            tool_result_json = json.dumps(tool_result.result, indent=2)
-
-            # We must use a protobuf Struct for the tool response result
-            struct_response = Struct()
-            # Make sure we are sending over a dictionary
             tool_run_result = {
                 "result": tool_result.result,
             }
-            struct_response.update(tool_run_result)
+
+            # Change the response to error if there is an error while calling the tool
+            if tool_result.error:
+                tool_run_result = {
+                    "error": tool_result.error,
+                }
 
             fn_res_result_parts.append(
-                {
-                    "function_response": {
-                        "name": tool_result.name,
-                        "response": struct_response,
-                    }
-                }
+                types.Part.from_function_response(
+                    name=tool_result.name,
+                    response=tool_run_result,
+                )
             )
-            final_tool_result_content += f"{tool_result_json}\n"
 
-        messages.append(
-            {
-                "role": "function",
-                "parts": fn_res_result_parts,
-            }
+        messages.append(types.Content(parts=fn_res_result_parts, role="tool"))
+
+        self.logger.debug(
+            "Gemini message with tool results",
+            gemini_message=messages,
         )
 
-        gen_config = genai.types.GenerationConfig(
+        # print(
+        #     f"**** Message to send to Gemini with tool results: {json.dumps(self._serialize_message(messages), indent=2)}"
+        # )
+
+        gen_config = types.GenerateContentConfig(
             candidate_count=1, max_output_tokens=max_tokens, temperature=temperature
         )
 
         msg_send_time = datetime.now(timezone.utc)
-        response = self.client.generate_content(
-            messages,
-            generation_config=gen_config,
+        response = self.client.models.generate_content(
+            model=self.model,
+            config=gen_config,
+            contents=messages,
         )
         msg_receive_time = datetime.now(timezone.utc)
+
+        self.logger.debug(
+            "Gemini response with tool results",
+            gemini_response=response,
+        )
 
         response_text: str = response.text
 
@@ -303,12 +328,24 @@ class GoogleAgent(Agent):
                 )
 
             if exchange.user_msg.content:
-                user_content.append(
-                    {
-                        "role": "user",
-                        "parts": [exchange.user_msg.content],
-                    }
+                #                 contents=types.Content(parts=[
+                #     types.Part.from_text(text='Can you recommend some things to do in Boston in the winter?'),
+                #     types.Part.from_text(text='Can you recommend some things to do in New York in the winter?')
+                # ], role='user')
+                self.logger.debug(
+                    "User content",
+                    user_content=exchange.user_msg.content,
                 )
+                user_content.append(
+                    types.Content(parts=[types.Part.from_text(text=exchange.user_msg.content)], role="user")
+                )
+
+                # user_content.append(
+                #     {
+                #         "role": "user",
+                #         "parts": [exchange.user_msg.content],
+                #     }
+                # )
 
             messages.extend(user_content)
 
@@ -335,11 +372,14 @@ class GoogleAgent(Agent):
 
             if exchange.agent_response.content:
                 assistant_content.append(
-                    {
-                        "role": "model",
-                        "parts": [exchange.agent_response.content],
-                    }
+                    types.Content(parts=[types.Part.from_text(text=exchange.agent_response.content)], role="model")
                 )
+                # assistant_content.append(
+                #     {
+                #         "role": "model",
+                #         "parts": [exchange.agent_response.content],
+                #     }
+                # )
 
             messages.extend(assistant_content)
 

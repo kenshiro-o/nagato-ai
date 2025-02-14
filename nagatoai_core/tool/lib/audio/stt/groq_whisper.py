@@ -266,6 +266,8 @@ class GroqWhisperTool(AbstractTool):
 
             if config.response_format == "verbose_json":
                 output["segments"] = all_combined_segments
+                # No need to keep the full transcription if we have the segments
+                output.pop("full_transcription", None)
 
                 if not config.keep_technical_information:
                     # Remove tokens, temperature, avg_logprob, compression_ratio, no_speech_prob from segments
