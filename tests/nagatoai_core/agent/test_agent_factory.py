@@ -2,11 +2,7 @@
 from unittest.mock import MagicMock, patch
 
 # Third Party
-import google.generativeai as genai
 import pytest
-from anthropic import Anthropic
-from groq import Groq
-from openai import OpenAI
 
 # Nagato AI
 from nagatoai_core.agent.anthropic import AnthropicAgent
@@ -45,8 +41,7 @@ def test_create_agent_returns_correct_agent_type(model, expected_agent_class):
         patch("openai.OpenAI"),
         patch("anthropic.Anthropic"),
         patch("groq.Groq"),
-        patch("google.generativeai.configure"),
-        patch("google.generativeai.GenerativeModel"),
+        patch("google.genai.Client"),
     ):
 
         agent = create_agent(
@@ -100,10 +95,7 @@ def test_create_agent_strips_groq_prefix():
 
 
 def test_create_agent_configures_gemini():
-    with (
-        patch("google.generativeai.configure") as mock_configure,
-        patch("google.generativeai.GenerativeModel") as mock_model,
-    ):
+    with (patch("google.genai.Client") as mock_configure,):
 
         create_agent(
             api_key=TEST_API_KEY,
@@ -114,7 +106,6 @@ def test_create_agent_configures_gemini():
         )
 
         mock_configure.assert_called_once_with(api_key=TEST_API_KEY)
-        mock_model.assert_called_once_with("gemini-pro")
 
 
 @pytest.mark.parametrize(

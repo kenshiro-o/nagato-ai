@@ -328,10 +328,6 @@ class GoogleAgent(Agent):
                 )
 
             if exchange.user_msg.content:
-                #                 contents=types.Content(parts=[
-                #     types.Part.from_text(text='Can you recommend some things to do in Boston in the winter?'),
-                #     types.Part.from_text(text='Can you recommend some things to do in New York in the winter?')
-                # ], role='user')
                 self.logger.debug(
                     "User content",
                     user_content=exchange.user_msg.content,
@@ -339,13 +335,6 @@ class GoogleAgent(Agent):
                 user_content.append(
                     types.Content(parts=[types.Part.from_text(text=exchange.user_msg.content)], role="user")
                 )
-
-                # user_content.append(
-                #     {
-                #         "role": "user",
-                #         "parts": [exchange.user_msg.content],
-                #     }
-                # )
 
             messages.extend(user_content)
 

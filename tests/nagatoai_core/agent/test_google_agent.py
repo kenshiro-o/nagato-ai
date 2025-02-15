@@ -139,7 +139,7 @@ def test_chat_with_tool(google_client):
     # Act
     result = agent.chat(
         task=None,
-        prompt="What time is it right now? Please use the TimeNowTool to check with UTC timezone.",
+        prompt="What time is it right now? Please use the TimeNowTool to check with UTC timezone. Your reply should start with the sentence 'It is currently ...'",
         tools=[time_tool],
         temperature=0.7,
         max_tokens=100,
@@ -189,7 +189,7 @@ def test_chat_then_tool_then_tool_response(google_client):
     # Second message requesting time
     result = agent.chat(
         task=None,
-        prompt="What time is it right now? Please use the TimeNowTool to check with UTC timezone.",
+        prompt="What time is it right now? Please use the TimeNowTool to check with UTC timezone. Your reply should start with the sentence 'It is currently ...'",
         tools=[time_tool],
         temperature=0.7,
         max_tokens=100,
@@ -218,3 +218,154 @@ def test_chat_then_tool_then_tool_response(google_client):
     assert isinstance(final_result, Exchange)
     assert final_result.agent_response.content is not None
     assert "it is currently" in final_result.agent_response.content.lower()
+
+
+def test_chat_then_tool_then_tool_response_with_error(google_client):
+    """Test that the agent can handle a chat, followed by a tool call, and then process the tool results."""
+
+    agent = GoogleAgent(
+        client=google_client,
+        model="gemini-2.0-flash",
+        role="assistant",
+        role_description="You are a helpful AI assistant.",
+        nickname="TestAgent",
+    )
+
+    # Act
+    result = agent.chat(
+        task=None,
+        prompt="What is the capital of France?",
+        tools=[],
+        temperature=0.7,
+        max_tokens=100,
+    )
+
+    # Assert
+    assert isinstance(result, Exchange)
+    assert result.user_msg.content == "What is the capital of France?"
+    assert "Paris" in result.agent_response.content
+
+    # Set up TimeNowTool for second message
+    tt = TimeNowTool()
+    time_tool = GoogleToolProvider(
+        name=tt.name,
+        description=tt.description,
+        args_schema=tt.args_schema,
+        tool=tt,
+    )
+
+    # Second message requesting time
+    result = agent.chat(
+        task=None,
+        prompt="What time is it right now? Please use the TimeNowTool to check with UTC timezone. Your reply should start with the sentence 'It is currently ...'",
+        tools=[time_tool],
+        temperature=0.7,
+        max_tokens=100,
+    )
+
+    # Assert tool call was made
+    assert isinstance(result, Exchange)
+    assert result.agent_response.tool_calls is not None
+    assert len(result.agent_response.tool_calls) == 1
+    assert result.agent_response.tool_calls[0].name == tt.name
+
+    # Execute tool and send results back with error
+
+    tool_error = "Error: Failed to get time"
+
+    final_result = agent.send_tool_run_results(
+        task=None,
+        tool_results=[
+            ToolResult(id=result.agent_response.tool_calls[0].id, name=tt.name, result=None, error=tool_error)
+        ],
+        tools=[time_tool],
+        temperature=0.7,
+        max_tokens=100,
+    )
+
+    # Assert final response contains the error
+    assert isinstance(final_result, Exchange)
+    assert final_result.agent_response.content is not None
+    assert "error" in final_result.agent_response.content.lower()
+
+
+def test_chat_then_tool_then_tool_response_then_chat(google_client):
+    """Test that the agent can handle a chat, followed by a tool call, then a tool response, and then a chat."""
+
+    agent = GoogleAgent(
+        client=google_client,
+        model="gemini-2.0-flash",
+        role="assistant",
+        role_description="You are a helpful AI assistant.",
+        nickname="TestAgent",
+    )
+
+    # Act
+    result = agent.chat(
+        task=None,
+        prompt="What is the capital of France?",
+        tools=[],
+        temperature=0.7,
+        max_tokens=100,
+    )
+
+    # Assert
+    assert isinstance(result, Exchange)
+    assert result.user_msg.content == "What is the capital of France?"
+    assert "Paris" in result.agent_response.content
+
+    # Set up TimeNowTool for second message
+    tt = TimeNowTool()
+    time_tool = GoogleToolProvider(
+        name=tt.name,
+        description=tt.description,
+        args_schema=tt.args_schema,
+        tool=tt,
+    )
+
+    # Second message requesting time
+    result = agent.chat(
+        task=None,
+        prompt="What time is it right now? Please use the TimeNowTool to check with UTC timezone. Your reply should start with the sentence 'It is currently ...'",
+        tools=[time_tool],
+        temperature=0.7,
+        max_tokens=100,
+    )
+
+    # Assert tool call was made
+    assert isinstance(result, Exchange)
+    assert result.agent_response.tool_calls is not None
+    assert len(result.agent_response.tool_calls) == 1
+    assert result.agent_response.tool_calls[0].name == tt.name
+
+    # Execute tool and send results back
+    tool_result = tt._run(TimeNowConfig(use_utc_timezone=True))
+
+    final_result = agent.send_tool_run_results(
+        task=None,
+        tool_results=[
+            ToolResult(id=result.agent_response.tool_calls[0].id, name=tt.name, result=tool_result, error=None)
+        ],
+        tools=[time_tool],
+        temperature=0.7,
+        max_tokens=100,
+    )
+
+    # Assert tool response was made
+    assert isinstance(final_result, Exchange)
+    assert final_result.agent_response.content is not None
+    assert "it is currently" in final_result.agent_response.content.lower()
+
+    # Third chat message
+    result = agent.chat(
+        task=None,
+        prompt="What is the capital of the United States?",
+        tools=[],
+        temperature=0.7,
+        max_tokens=100,
+    )
+
+    # Assert
+    assert isinstance(result, Exchange)
+    assert result.user_msg.content == "What is the capital of the United States?"
+    assert "Washington, D.C." in result.agent_response.content
