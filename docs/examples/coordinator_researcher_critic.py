@@ -118,7 +118,7 @@ def main():
 
     # researcher_agent = create_agent(
     #     google_api_key,
-    #     "gemini-1.5-flash",
+    #     "gemini-2.0-flash",
     #     "Researcher",
     #     RESEARCHER_SYSTEM_PROMPT,
     #     "Researcher Agent",
@@ -140,21 +140,21 @@ def main():
     #     "Researcher Agent",
     # )
 
-    # critic_agent = create_agent(
-    #     anthropic_api_key,
-    #     "claude-3-haiku-20240307",
-    #     "Critic",
-    #     CRITIC_SYSTEM_PROMPT,
-    #     "Critic Agent",
-    # )
-
     critic_agent = create_agent(
-        google_api_key,
-        "gemini-1.5-flash",
+        anthropic_api_key,
+        "claude-3-5-haiku-20241022",
         "Critic",
         CRITIC_SYSTEM_PROMPT,
         "Critic Agent",
     )
+
+    # critic_agent = create_agent(
+    #     google_api_key,
+    #     "gemini-2.0-flash-lite-preview-02-05",
+    #     "Critic",
+    #     CRITIC_SYSTEM_PROMPT,
+    #     "Critic Agent",
+    # )
 
     # critic_agent = create_agent(
     #     openai_api_key,

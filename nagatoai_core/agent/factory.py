@@ -2,24 +2,24 @@
 from typing import Type
 
 # Third Party
-import google.generativeai as genai
 from anthropic import Anthropic
+from google import genai
 from groq import Groq
 from openai import OpenAI
 
 # Nagato AI
+from nagatoai_core.agent.agent import Agent
+from nagatoai_core.agent.anthropic import AnthropicAgent
+
 # Company Libraries
 from nagatoai_core.agent.deepseek import DeepSeekAgent
+from nagatoai_core.agent.google import GoogleAgent
+from nagatoai_core.agent.groq import GroqAgent
+from nagatoai_core.agent.openai import OpenAIAgent
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 from nagatoai_core.tool.provider.anthropic import AnthropicToolProvider
 from nagatoai_core.tool.provider.google import GoogleToolProvider
 from nagatoai_core.tool.provider.openai import OpenAIToolProvider
-
-from .agent import Agent
-from .anthropic import AnthropicAgent
-from .google import GoogleAgent
-from .groq import GroqAgent
-from .openai import OpenAIAgent
 
 
 def create_agent(api_key: str, model: str, role: str, role_description: str, nickname: str) -> Agent:
@@ -50,8 +50,7 @@ def create_agent(api_key: str, model: str, role: str, role_description: str, nic
         return GroqAgent(client, model, role, role_description, nickname)
 
     if model.startswith("gemini"):
-        genai.configure(api_key=api_key)
-        client = genai.GenerativeModel(model)
+        client = genai.Client(api_key=api_key)
         return GoogleAgent(client, model, role, role_description, nickname)
 
     raise ValueError(f"Unsupported model: {model}")
