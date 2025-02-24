@@ -15,6 +15,9 @@ class TimeNowConfig(BaseModel):
     TimeNowConfig represents the configuration for the TimeNowTool.
     """
 
+    class Config:
+        extra_allowed = False
+
     use_utc_timezone: bool = Field(
         True,
         description="Whether to use the UTC timezone.",
