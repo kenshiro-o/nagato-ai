@@ -1,14 +1,17 @@
 from __future__ import annotations
-from typing import Optional, List
+
+# Standard Library
+from typing import List, Optional
+
+# Third Party
 from pydantic import BaseModel, Field
 
-# Import your previously defined AbstractNode and Agent classes
-# Adjust these imports based on your project structure
+# Nagato AI
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.graph.abstract_node import AbstractNode
+from nagatoai_core.graph.types import NodeResult
 from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
-from nagatoai_core.graph.types import NodeResult
 
 
 class AgentNode(AbstractNode):

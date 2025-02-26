@@ -1,7 +1,10 @@
-from typing import List, Union, Dict, Optional
+# Standard Library
+from typing import Dict, List, Optional, Union
 
+# Third Party
 from pydantic import BaseModel, Field
 
+# Nagato AI
 from nagatoai_core.graph.abstract_flow import AbstractFlow
 from nagatoai_core.graph.types import NodeResult
 
@@ -23,7 +26,3 @@ class Graph(BaseModel):
             inputs = result_at_this_node
 
         return results_at_this_node
-
-
-# Example Graph
-# Sequential(node_1, node_2, node_3) -> Conditional()
