@@ -16,7 +16,7 @@ class TimeNowConfig(BaseModel):
     """
 
     class Config:
-        extra_allowed = False
+        extra = "forbid"
 
     use_utc_timezone: bool = Field(
         True,

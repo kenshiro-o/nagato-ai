@@ -28,7 +28,7 @@ def tool_provider():
 def test_correct_tool_execution(tool_provider: Type[AbstractTool]):
     """Test the correct execution of a ToolNode with valid parameters."""
 
-    node = ToolNode(id="tool_node", parents=[], descendants=[], tool_provider=tool_provider)
+    node = ToolNode(id="tool_node", parents=[], children=[], tool_provider=tool_provider)
     inputs = [NodeResult(node_id="some_id", result={"use_utc_timezone": False}, error=None, step=1)]
 
     result = node.execute(inputs)
@@ -56,22 +56,22 @@ def test_correct_tool_execution(tool_provider: Type[AbstractTool]):
     assert result_item.step == 2
 
 
-# def test_incorrect_tool_execution(tool_provider: AbstractTool):
-#     """Test the execution of a ToolNode with invalid parameters, resulting in an error."""
+def test_incorrect_tool_execution(tool_provider: AbstractTool):
+    """Test the execution of a ToolNode with invalid parameters, resulting in an error."""
 
-#     node = ToolNode(id="tool_node", parents=[], descendants=[], tool_provider=tool_provider)
+    node = ToolNode(id="tool_node", parents=[], children=[], tool_provider=tool_provider)
 
-#     inputs = [NodeResult(node_id="some_id", result={"not_a_good_param": False}, error=None, step=1)]
+    inputs = [NodeResult(node_id="some_id", result={"not_a_good_param": False}, error=None, step=1)]
 
-#     results = node.execute(inputs)
+    results = node.execute(inputs)
 
-#     assert isinstance(results, list)
-#     assert len(results) == 1
+    assert isinstance(results, list)
+    assert len(results) == 1
 
-#     result_item = results[0]
-#     assert isinstance(result_item, NodeResult)
-#     assert result_item.node_id is not None
+    result_item = results[0]
+    assert isinstance(result_item, NodeResult)
+    assert result_item.node_id is not None
 
-#     assert result_item.result is None
-#     assert results.step == 2
-#     assert result_item.error is not None
+    assert result_item.result is None
+    assert result_item.step == 2
+    assert result_item.error is not None

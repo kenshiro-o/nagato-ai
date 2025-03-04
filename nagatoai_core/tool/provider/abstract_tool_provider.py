@@ -25,6 +25,7 @@ def get_json_schema_type(python_type: Type) -> str:
     return type_mappings.get(python_type, "string")
 
 
+# We don't need to inherit from AbstractTool
 class AbstractToolProvider(AbstractTool, BaseModel):
     """
     AbstractToolProvider represents the base class for all tool providers.

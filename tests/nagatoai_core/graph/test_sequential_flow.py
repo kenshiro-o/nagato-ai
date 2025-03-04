@@ -33,9 +33,9 @@ def test_sequential_flow_with_three_nodes():
     # Create a sequential flow with three nodes
     flow = SequentialFlow(
         nodes=[
-            MinimalisticNode(id="node_1", parents=[], descendants=[]),
-            MinimalisticNode(id="node_2", parents=[], descendants=[]),
-            MinimalisticNode(id="node_3", parents=[], descendants=[]),
+            MinimalisticNode(id="node_1", parents=[], children=[]),
+            MinimalisticNode(id="node_2", parents=[], children=[]),
+            MinimalisticNode(id="node_3", parents=[], children=[]),
         ]
     )
 
@@ -57,8 +57,8 @@ def test_sequential_flow_with_nested_two_nodes():
     # Create an inner sequential flow with two nodes
     inner_flow = SequentialFlow(
         nodes=[
-            MinimalisticNode(id="node_1", parents=[], descendants=[]),
-            MinimalisticNode(id="node_2", parents=[], descendants=[]),
+            MinimalisticNode(id="node_1", parents=[], children=[]),
+            MinimalisticNode(id="node_2", parents=[], children=[]),
         ]
     )
 

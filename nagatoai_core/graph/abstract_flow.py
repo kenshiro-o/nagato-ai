@@ -20,6 +20,9 @@ class AbstractFlow(BaseModel, ABC):
     of its component nodes and/or sub-flows.
     """
 
+    id: str = ""
+    parents: List[AbstractFlow] = []
+    children: List[AbstractFlow] = []
     nodes: List[Union[AbstractNode, AbstractFlow]] = Field(default_factory=list)
 
     # Think about how to increase the depth of a given flow

@@ -59,4 +59,4 @@ class ToolNode(AbstractNode):
         except Exception as e:
             print(f"An error occurred while trying to run the tool node: {e}")
             traceback.print_exc()
-            return [NodeResult(node_id=self.id, result=None, error=str(e), step=inputs[0].step + 1)]
+            return [NodeResult(node_id=self.id, result=None, error=e, step=inputs[0].step + 1)]

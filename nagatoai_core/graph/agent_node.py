@@ -12,6 +12,7 @@ from nagatoai_core.graph.abstract_node import AbstractNode
 from nagatoai_core.graph.types import NodeResult
 from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
+from nagatoai_core.prompt.template.prompt_template import PromptTemplate
 
 
 class AgentNode(AbstractNode):
@@ -25,7 +26,7 @@ class AgentNode(AbstractNode):
 
     agent: Agent
     task: Optional[Task] = None
-    prompt: Optional[str] = None
+    prompt_template: Optional[PromptTemplate] = None
     tools: Optional[List[AbstractToolProvider]] = None
     temperature: float = 0.7
     max_tokens: int = 150
@@ -39,10 +40,18 @@ class AgentNode(AbstractNode):
         """
         # TODO - How do I incorporate the inputs as part of the prompt?
 
-        return self.agent.chat(
+        prompt = ""
+        if self.prompt_template:
+            prompt = self.prompt_template.generate_prompt({"result_input": inputs[0].result})
+
+        print(f"Full Prompt: {prompt}")
+
+        exchange = self.agent.chat(
             task=self.task,
-            prompt=self.prompt,
+            prompt=prompt,
             tools=self.tools,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
         )
+
+        return [NodeResult(node_id=self.id, result=exchange, step=inputs[0].step + 1)]
