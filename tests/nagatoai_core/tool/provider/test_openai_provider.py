@@ -10,8 +10,7 @@ from unittest.mock import MagicMock
 from pydantic import BaseModel, Field
 
 # Nagato AI
-from nagatoai_core.tool.abstract_tool import TOOL_METADATA_EXCLUDE_FROM_SCHEMA
-from nagatoai_core.tool.abstract_tool import AbstractTool
+from nagatoai_core.tool.abstract_tool import TOOL_METADATA_EXCLUDE_FROM_SCHEMA, AbstractTool
 from nagatoai_core.tool.lib.audio.stt.groq_whisper import GroqWhisperTool
 from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 

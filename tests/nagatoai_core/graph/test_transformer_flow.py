@@ -1,12 +1,14 @@
 # Standard Library
 from typing import List
+
+# Third Party
 import pytest
 
 # Nagato AI
 from nagatoai_core.graph.abstract_flow import AbstractFlow
-from nagatoai_core.graph.transformer_flow import TransformerFlow, combine_inputs_with_flow
-from nagatoai_core.graph.sequential_flow import SequentialFlow
 from nagatoai_core.graph.abstract_node import AbstractNode
+from nagatoai_core.graph.sequential_flow import SequentialFlow
+from nagatoai_core.graph.transformer_flow import TransformerFlow, combine_inputs_with_flow
 from nagatoai_core.graph.types import NodeResult
 
 

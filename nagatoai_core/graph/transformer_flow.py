@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 # Standard Library
-from typing import Callable, List
 import traceback
+from typing import Callable, List
 
 # Third Party
 from pydantic import Field
