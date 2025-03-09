@@ -42,23 +42,8 @@ class AgentNode(AbstractNode):
 
         prompt = ""
         if self.prompt_template:
-
-            # placeholders = []
-            # for _, field_name, _, _ in string.Formatter().parse(self.prompt_template.template):
-            #     if field_name is not None:  # Skip None values (literal sections)
-            #         placeholders.append(field_name)
-
-            # print(f"Placeholders not sorted: {placeholders}")
-
-            # # Sort the placeholders alphabetically
-            # placeholders.sort()
-
-            # print(f"Placeholders sorted: {placeholders}")
-
             # Build the prompt data dictionary - we expect the placeholders to be of the form "result_input[i]"
             prompt_data = {"inputs": inputs}
-            # for i, placeholder in enumerate(placeholders):
-            #     prompt_data[placeholder] = inputs[i].result
 
             print(f"Prompt data: {prompt_data}")
 

@@ -50,7 +50,11 @@ class ToolNode(AbstractNode):
 
             logging.info(f"*** Params to tool are {obj_params}")
 
-            tool_params = tool_params_schema(**obj_params)
+            # Pick the first input if there are no params and check whether it is the same type as the tool params schema
+            if len(obj_params) == 0 and isinstance(inputs[0].result, tool_params_schema):
+                tool_params = inputs[0].result
+            else:
+                tool_params = tool_params_schema(**obj_params)
 
             logging.info(f"Schema generated is {tool_params}")
 

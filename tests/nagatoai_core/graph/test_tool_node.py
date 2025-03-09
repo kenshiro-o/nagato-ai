@@ -75,3 +75,35 @@ def test_incorrect_tool_execution(tool_provider: AbstractTool):
     assert result_item.result is None
     assert result_item.step == 2
     assert result_item.error is not None
+
+
+def test_tool_execution_with_schema_instance(tool_provider):
+    """Test the execution of a ToolNode when input is already an instance of the tool's parameter schema."""
+
+    node = ToolNode(id="tool_node", parents=[], children=[], tool_provider=tool_provider)
+
+    # Create an instance of the tool's parameter schema directly
+    schema_instance = TimeNowConfig(use_utc_timezone=True)
+    inputs = [NodeResult(node_id="some_id", result=schema_instance, error=None, step=1)]
+
+    result = node.execute(inputs)
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    current_time_str = datetime.now(UTC).isoformat().split("+")[0]
+
+    result_item = result[0]
+    assert isinstance(result_item, NodeResult)
+    assert result_item.node_id == "tool_node"
+
+    # Parse and compare the time
+    time_str = result_item.result.split("+")[0]
+    tool_time_result = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
+    current_time = datetime.strptime(current_time_str, "%Y-%m-%dT%H:%M:%S.%f")
+
+    delta = tool_time_result - current_time
+
+    assert delta.total_seconds() <= 5
+    assert result_item.step == 2
+    # Verify UTC time since we set use_utc_timezone=True
+    assert "Z" in result_item.result or "+" in result_item.result
