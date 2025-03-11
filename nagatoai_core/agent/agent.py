@@ -3,6 +3,8 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+from pydantic import BaseModel
+
 # Nagato AI
 # Company Libraries
 from nagatoai_core.common.structured_logger import StructuredLogger
@@ -63,6 +65,7 @@ class Agent(ABC):
         tools: List[AbstractToolProvider],
         temperature: float,
         max_tokens: int,
+        target_output_schema: Optional[BaseModel] = None,
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.

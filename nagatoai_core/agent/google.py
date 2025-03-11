@@ -1,13 +1,14 @@
 # Standard Library
 import json
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Type
 
 # Third Party
 from google import genai
 from google.genai import types
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.struct_pb2 import Struct
+from pydantic import BaseModel
 
 # Nagato AI
 from nagatoai_core.agent.agent import Agent
@@ -101,6 +102,7 @@ class GoogleAgent(Agent):
         tools: List[GoogleToolProvider],
         temperature: float,
         max_tokens: int,
+        target_output_schema: Optional[Type[BaseModel]] = None,
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
@@ -109,6 +111,7 @@ class GoogleAgent(Agent):
         :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
         :param max_tokens: The maximum number of tokens to generate.
+        :param target_output_schema: The target output schema for the agent.
         :return: Exchange object containing the user message and the agent response."""
         previous_messages = self._build_chat_history()
         current_message = types.Content(parts=[types.Part.from_text(text=prompt)], role="user")
@@ -123,6 +126,10 @@ class GoogleAgent(Agent):
             temperature=temperature,
             tools=[types.Tool(function_declarations=[tool.schema()]) for tool in tools] if len(tools) > 0 else None,
         )
+
+        if target_output_schema:
+            gen_config.response_mime_type = "application/json"
+            gen_config.response_schema = target_output_schema.model_json_schema()
 
         # if len(tools) > 0:
         #     gen_config.tools = [tool.schema() for tool in tools]
@@ -176,7 +183,10 @@ class GoogleAgent(Agent):
             tool_calls.append(ToolCall(id=fn_id, name=fn_name, parameters=args_dict))
         else:
             # When there are tool calls, there is often no text response from the model
-            response_text += response.text
+            if target_output_schema:
+                response_text = target_output_schema(**response.parsed)
+            else:
+                response_text = response.text
 
         exchange = Exchange(
             chat_history=self._serialize_message(messages),

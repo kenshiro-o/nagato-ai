@@ -1,7 +1,7 @@
 # Standard Library
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 # Third Party
 from pydantic import BaseModel
@@ -54,7 +54,7 @@ class Message(BaseModel):
     """
 
     sender: Sender
-    content: str
+    content: Union[str, BaseModel]
     tool_calls: List[ToolCall] = []
     tool_results: List[ToolResult] = []
     created_at: datetime
