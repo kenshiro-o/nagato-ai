@@ -373,8 +373,11 @@ def test_chat_then_tool_then_tool_response_then_chat(google_client):
 
 def test_chat_with_structured_output(google_client):
     """Test that the agent can return structured output using a target schema."""
-    from pydantic import BaseModel, Field
+    # Standard Library
     from typing import List
+
+    # Third Party
+    from pydantic import BaseModel, Field
 
     class CountryInfo(BaseModel):
         """Schema for country information."""

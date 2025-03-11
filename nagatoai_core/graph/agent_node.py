@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 # Standard Library
-from typing import List, Optional
 import string
+from typing import List, Optional
 
 # Third Party
 from pydantic import BaseModel, Field
