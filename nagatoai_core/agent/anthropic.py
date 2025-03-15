@@ -87,7 +87,7 @@ class AnthropicAgent(Agent):
             prompt = f"""{prompt}
 
             If not calling a tool then return a JSON object with the schema:
-            {target_output_schema.schema_json()}
+            {target_output_schema.model_json_schema()}
             """
 
         messages.append({"role": "user", "content": prompt})

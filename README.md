@@ -271,6 +271,8 @@ Moreover, there is a lot of functionality currently missing from Nagato. I will 
 * ✅ implement function calling for Google Gemini agent
 * ✅ LLMOps instrumentation (via Langfuse)
 * ✅ Add DeepSeek Agent
+* 🎯 Build DAG/Graph based agentic capability
+* 🎯 Extract Chain of Thought Reasoning
 * 🎯 implement short/long-term memory for agents (with RAG and memory synthesis)
 * 🎯 implement additional modalities (e.g. image, sound, etc.)
 * 🎯 Support for local LLMs (e.g. via Ollama)
