@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 # Nagato AI
 from nagatoai_core.graph.abstract_flow import AbstractFlow
+from nagatoai_core.graph.abstract_node import AbstractNode
 from nagatoai_core.graph.types import NodeResult
 
 
@@ -17,8 +18,8 @@ class Graph(BaseModel):
     passing the results of one flow as inputs to the next.
     """
 
-    nodes: List[AbstractFlow]
-    current_node: Optional[AbstractFlow] = None
+    nodes: List[AbstractNode]
+    current_node: Optional[AbstractNode] = None
     result_map: Dict[str, List[NodeResult]] = Field(default_factory=dict)
     compiled: bool = False
 

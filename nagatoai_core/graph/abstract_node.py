@@ -12,9 +12,8 @@ from nagatoai_core.graph.types import NodeResult
 
 
 class AbstractNode(BaseModel, ABC):
-    id: str
-    parents: List[AbstractNode] = Field(default_factory=list)
-    children: List[AbstractNode] = Field(default_factory=list)
+    id: str = Field(..., description="The unique identifier for the node.")
+    name: str = Field("", description="The name of the node. This name does not have to be unique across nodes")
 
     # TODO - all nodes should have access to a logger
     # - should they all use the same logger?

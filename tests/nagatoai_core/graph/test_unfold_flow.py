@@ -6,7 +6,7 @@ from nagatoai_core.graph.unfold_flow import UnfoldFlow
 def test_unfold_flow_with_numeric_lists():
     """Test UnfoldFlow with lists of numeric values"""
     # Create the unfold flow
-    unfold_flow = UnfoldFlow()
+    unfold_flow = UnfoldFlow(id="unfold_flow")
 
     # Input with two lists of numbers
     inputs = [NodeResult(node_id="input1", result=[1, 2, 3]), NodeResult(node_id="input2", result=[4, 5])]
@@ -33,7 +33,7 @@ def test_unfold_flow_with_numeric_lists():
 def test_unfold_flow_with_string_lists():
     """Test UnfoldFlow with lists of string values"""
     # Create the unfold flow
-    unfold_flow = UnfoldFlow()
+    unfold_flow = UnfoldFlow(id="unfold_flow")
 
     # Input with a list of strings
     inputs = [
@@ -58,7 +58,7 @@ def test_unfold_flow_with_string_lists():
 def test_unfold_flow_with_empty_lists():
     """Test UnfoldFlow with empty lists and skip_empty_lists option"""
     # Create flow with skip_empty_lists=True
-    unfold_flow = UnfoldFlow(skip_empty_lists=True)
+    unfold_flow = UnfoldFlow(id="unfold_flow", skip_empty_lists=True)
 
     # Input with one empty list and one non-empty list
     inputs = [NodeResult(node_id="input1", result=[]), NodeResult(node_id="input2", result=[4, 5])]
@@ -72,7 +72,7 @@ def test_unfold_flow_with_empty_lists():
     assert 5 in [r.result for r in results]
 
     # Flow with skip_empty_lists=False (default) should raise an error
-    unfold_flow = UnfoldFlow(skip_empty_lists=False)
+    unfold_flow = UnfoldFlow(id="unfold_flow", skip_empty_lists=False)
 
     # Execution should fail with an error about the empty list
     result = unfold_flow.execute(inputs)
@@ -85,7 +85,7 @@ def test_unfold_flow_with_empty_lists():
 def test_unfold_flow_with_non_list_inputs():
     """Test UnfoldFlow with non-list inputs and wrap_non_list_inputs option"""
     # Create flow with wrap_non_list_inputs=True
-    unfold_flow = UnfoldFlow(wrap_non_list_inputs=True)
+    unfold_flow = UnfoldFlow(id="unfold_flow", wrap_non_list_inputs=True)
 
     # Input with one list and one non-list value
     inputs = [NodeResult(node_id="input1", result=[1, 2]), NodeResult(node_id="input2", result=3)]  # Not a list
@@ -101,7 +101,7 @@ def test_unfold_flow_with_non_list_inputs():
     assert 3 in result_values
 
     # Flow with wrap_non_list_inputs=False should raise an error
-    unfold_flow = UnfoldFlow(wrap_non_list_inputs=False)
+    unfold_flow = UnfoldFlow(id="unfold_flow", wrap_non_list_inputs=False)
 
     # Execution should fail with an error about the non-list input
     result = unfold_flow.execute(inputs)
@@ -114,7 +114,7 @@ def test_unfold_flow_with_non_list_inputs():
 def test_unfold_flow_with_preserve_metadata():
     """Test UnfoldFlow with preserve_metadata option"""
     # Create a flow with preserve_metadata=True
-    unfold_flow = UnfoldFlow(preserve_metadata=True)
+    unfold_flow = UnfoldFlow(id="unfold_flow", preserve_metadata=True)
 
     # Input with a list and explicit step value
     inputs = [NodeResult(node_id="input1", result=[1, 2, 3], step=5)]
@@ -138,7 +138,7 @@ def test_unfold_flow_with_preserve_metadata():
 def test_unfold_flow_with_nested_lists():
     """Test UnfoldFlow with nested lists - it should only unfold the top level"""
     # Create the unfold flow
-    unfold_flow = UnfoldFlow()
+    unfold_flow = UnfoldFlow(id="unfold_flow")
 
     # Input with nested lists
     inputs = [
@@ -162,7 +162,7 @@ def test_unfold_flow_with_nested_lists():
 def test_unfold_flow_error_handling():
     """Test UnfoldFlow error handling for general exceptions"""
     # Create the unfold flow with wrap_non_list_inputs=False to trigger an error
-    unfold_flow = UnfoldFlow(wrap_non_list_inputs=False)
+    unfold_flow = UnfoldFlow(id="unfold_flow", wrap_non_list_inputs=False)
 
     # Test with invalid input (None)
     inputs = [NodeResult(node_id="input1", result=None)]

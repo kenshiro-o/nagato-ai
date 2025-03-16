@@ -23,7 +23,9 @@ class SimpleTestNode(AbstractNode):
 def test_transformer_flow_basic():
     """Test basic functionality of TransformerFlow."""
     # Create a simple flow to be injected
-    flow_to_inject = SequentialFlow(nodes=[SimpleTestNode(id="injected_node_1"), SimpleTestNode(id="injected_node_2")])
+    flow_to_inject = SequentialFlow(
+        id="flow_to_inject", nodes=[SimpleTestNode(id="injected_node_1"), SimpleTestNode(id="injected_node_2")]
+    )
 
     # Create a simple functor that combines input results with flow results
     def simple_functor(inputs: List[NodeResult], flow: AbstractFlow) -> List[NodeResult]:
@@ -37,7 +39,7 @@ def test_transformer_flow_basic():
         return combined_results
 
     # Create the transformer flow
-    transformer_flow = TransformerFlow(flow_param=flow_to_inject, functor=simple_functor)
+    transformer_flow = TransformerFlow(id="transformer_flow", flow_param=flow_to_inject, functor=simple_functor)
 
     # Create input results
     input_results = [
@@ -58,7 +60,7 @@ def test_transformer_flow_basic():
 def test_transformer_flow_with_complex_functor():
     """Test TransformerFlow with a more complex transformation functor."""
     # Create a flow to inject
-    flow_to_inject = SequentialFlow(nodes=[SimpleTestNode(id="data_processor")])
+    flow_to_inject = SequentialFlow(id="flow_to_inject", nodes=[SimpleTestNode(id="data_processor")])
 
     # Create a functor that does more complex transformation
     def complex_functor(inputs: List[NodeResult], flow: AbstractFlow) -> List[NodeResult]:
@@ -77,7 +79,7 @@ def test_transformer_flow_with_complex_functor():
         ]
 
     # Create the transformer flow
-    transformer_flow = TransformerFlow(flow_param=flow_to_inject, functor=complex_functor)
+    transformer_flow = TransformerFlow(id="transformer_flow", flow_param=flow_to_inject, functor=complex_functor)
 
     # Create input results
     input_results = [
@@ -97,7 +99,7 @@ def test_transformer_flow_with_complex_functor():
 def test_transformer_flow_error_handling():
     """Test error handling in TransformerFlow."""
     # Create a flow that will be used
-    flow_to_inject = SequentialFlow(nodes=[SimpleTestNode(id="error_node")])
+    flow_to_inject = SequentialFlow(id="flow_to_inject", nodes=[SimpleTestNode(id="error_node")])
 
     # Create a functor that might raise an exception
     def error_functor(inputs: List[NodeResult], flow: AbstractFlow) -> List[NodeResult]:
@@ -108,7 +110,7 @@ def test_transformer_flow_error_handling():
         return [NodeResult(node_id="error_handler", result="Processed successfully")]
 
     # Create the transformer flow
-    transformer_flow = TransformerFlow(flow_param=flow_to_inject, functor=error_functor)
+    transformer_flow = TransformerFlow(id="transformer_flow", flow_param=flow_to_inject, functor=error_functor)
 
     # Test with empty inputs (should raise exception)
     results = transformer_flow.execute([])
@@ -128,7 +130,9 @@ def test_transformer_flow_error_handling():
 def test_combine_inputs_with_flow_utility():
     """Test the combine_inputs_with_flow utility function."""
     # Create a test flow
-    test_flow = SequentialFlow(nodes=[SimpleTestNode(id="flow_node_1"), SimpleTestNode(id="flow_node_2")])
+    test_flow = SequentialFlow(
+        id="test_flow", nodes=[SimpleTestNode(id="flow_node_1"), SimpleTestNode(id="flow_node_2")]
+    )
 
     # Create input results
     input_results = [
@@ -150,7 +154,7 @@ def test_combine_inputs_with_flow_utility():
     assert combined_results[2].node_id == "flow_node_2"
 
     # Test with a TransformerFlow using the utility function
-    transformer_flow = TransformerFlow(flow_param=test_flow, functor=combine_inputs_with_flow)
+    transformer_flow = TransformerFlow(id="transformer_flow", flow_param=test_flow, functor=combine_inputs_with_flow)
 
     # Execute the transformer flow
     results = transformer_flow.execute(input_results)

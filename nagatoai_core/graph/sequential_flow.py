@@ -2,8 +2,12 @@
 import logging
 from typing import List, Optional, Type
 
+# Third Party
+from pydantic import BaseModel, Field
+
 # Nagato AI
 from nagatoai_core.graph.abstract_flow import AbstractFlow
+from nagatoai_core.graph.abstract_node import AbstractNode
 from nagatoai_core.graph.types import NodeResult
 
 
@@ -13,6 +17,7 @@ class SequentialFlow(AbstractFlow):
     """
 
     # TODO - What about retries at the flow level
+    nodes: List[AbstractNode] = Field(default_factory=list, description="The nodes that make up the flow.")
 
     def execute(self, inputs: List[NodeResult]) -> List[NodeResult]:
         """

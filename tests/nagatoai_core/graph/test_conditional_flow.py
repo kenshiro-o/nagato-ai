@@ -65,6 +65,7 @@ def test_conditional_flow_equal_true_path():
     negative_node = TestNode(id="negative_node", return_value="negative result")
 
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=positive_node,
         negative_path=negative_node,
         comparison_type=ComparisonType.EQUAL,
@@ -85,6 +86,7 @@ def test_conditional_flow_equal_false_path():
     negative_node = TestNode(id="negative_node", return_value="negative result")
 
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=positive_node,
         negative_path=negative_node,
         comparison_type=ComparisonType.EQUAL,
@@ -105,6 +107,7 @@ def test_conditional_flow_greater_than():
     negative_node = TestNode(id="negative_node", return_value="negative result")
 
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=positive_node,
         negative_path=negative_node,
         comparison_type=ComparisonType.GREATER_THAN,
@@ -134,6 +137,7 @@ def test_conditional_flow_with_custom_comparison():
         return False
 
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=positive_node,
         negative_path=negative_node,
         comparison_value="test",
@@ -157,6 +161,7 @@ def test_conditional_flow_with_attribute_access():
     negative_node = TestNode(id="negative_node", return_value="negative result")
 
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=positive_node,
         negative_path=negative_node,
         comparison_type=ComparisonType.EQUAL,
@@ -179,7 +184,9 @@ def test_conditional_flow_with_only_positive_path():
     """Test conditional flow with only a positive path defined"""
     positive_node = TestNode(id="positive_node", return_value="positive result")
 
-    flow = ConditionalFlow(positive_path=positive_node, comparison_type=ComparisonType.EQUAL, comparison_value=10)
+    flow = ConditionalFlow(
+        id="test_flow", positive_path=positive_node, comparison_type=ComparisonType.EQUAL, comparison_value=10
+    )
 
     # Input equals comparison value, should take positive path
     result = flow.execute([NodeResult(node_id="input", result=10)])
@@ -202,6 +209,7 @@ def test_conditional_flow_with_nested_flows():
 
     # Create a nested conditional flow structure
     inner_flow = ConditionalFlow(
+        id="inner_flow",
         positive_path=square_node,
         negative_path=double_node,
         comparison_type=ComparisonType.GREATER_THAN,
@@ -209,6 +217,7 @@ def test_conditional_flow_with_nested_flows():
     )
 
     outer_flow = ConditionalFlow(
+        id="outer_flow",
         positive_path=inner_flow,
         negative_path=TestNode(id="default_node", return_value=0),
         comparison_type=ComparisonType.GREATER_THAN,
@@ -237,6 +246,7 @@ def test_conditional_flow_with_nested_flows():
 def test_conditional_flow_error_handling():
     """Test conditional flow error handling"""
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=TestNode(id="positive_node", return_value="positive result"),
         comparison_type=ComparisonType.EQUAL,
         comparison_value=10,
@@ -256,6 +266,7 @@ def test_conditional_flow_with_broadcasting_and():
     negative_node = TestNode(id="negative_node", return_value="negative result")
 
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=positive_node,
         negative_path=negative_node,
         broadcast_comparison=True,
@@ -293,6 +304,7 @@ def test_conditional_flow_with_broadcasting_or():
     negative_node = TestNode(id="negative_node", return_value="negative result")
 
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=positive_node,
         negative_path=negative_node,
         broadcast_comparison=True,
@@ -330,6 +342,7 @@ def test_conditional_flow_with_attribute_and_broadcasting():
     negative_node = TestNode(id="negative_node", return_value="negative result")
 
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=positive_node,
         negative_path=negative_node,
         broadcast_comparison=True,
@@ -374,6 +387,7 @@ def test_conditional_flow_with_custom_comparison_broadcasting():
         return False
 
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=positive_node,
         negative_path=negative_node,
         broadcast_comparison=True,
@@ -411,6 +425,7 @@ def test_conditional_flow_empty_inputs_with_broadcasting():
     negative_node = TestNode(id="negative_node", return_value="negative result")
 
     flow = ConditionalFlow(
+        id="test_flow",
         positive_path=positive_node,
         negative_path=negative_node,
         broadcast_comparison=True,

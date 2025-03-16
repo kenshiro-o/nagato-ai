@@ -28,7 +28,7 @@ def tool_provider():
 def test_correct_tool_execution(tool_provider: Type[AbstractTool]):
     """Test the correct execution of a ToolNode with valid parameters."""
 
-    node = ToolNode(id="tool_node", parents=[], children=[], tool_provider=tool_provider)
+    node = ToolNode(id="tool_node", tool_provider=tool_provider)
     inputs = [NodeResult(node_id="some_id", result={"use_utc_timezone": False}, error=None, step=1)]
 
     result = node.execute(inputs)
@@ -59,7 +59,7 @@ def test_correct_tool_execution(tool_provider: Type[AbstractTool]):
 def test_incorrect_tool_execution(tool_provider: AbstractTool):
     """Test the execution of a ToolNode with invalid parameters, resulting in an error."""
 
-    node = ToolNode(id="tool_node", parents=[], children=[], tool_provider=tool_provider)
+    node = ToolNode(id="tool_node", tool_provider=tool_provider)
 
     inputs = [NodeResult(node_id="some_id", result={"not_a_good_param": False}, error=None, step=1)]
 
@@ -80,7 +80,7 @@ def test_incorrect_tool_execution(tool_provider: AbstractTool):
 def test_tool_execution_with_schema_instance(tool_provider):
     """Test the execution of a ToolNode when input is already an instance of the tool's parameter schema."""
 
-    node = ToolNode(id="tool_node", parents=[], children=[], tool_provider=tool_provider)
+    node = ToolNode(id="tool_node", tool_provider=tool_provider)
 
     # Create an instance of the tool's parameter schema directly
     schema_instance = TimeNowConfig(use_utc_timezone=True)
