@@ -128,6 +128,7 @@ class ToolNodeWithParamsConversion(ToolNode):
         </target_schema>
 
         Please specify the result inside the <params_instance> tag.
+        When it comes to to the value of fields that look like file names, file paths, or other unique identifiers, use information from the input to create unique names (e.g. use index number, id, suffix, number, timestamp, etc.).
         Make sure that we only have valid json inside the <params_instance> tag.
         Additionally DO NOT UNDER ANY CIRCUMSTANCES prefix the json content within the tag with  ```json or ```.
         YOU MUST ENSURE THE RESPONSE STARTS WITH THE <params_instance> TAG AND ENDS WITH THE </params_instance> TAG.
@@ -183,21 +184,30 @@ class ToolNodeWithParamsConversion(ToolNode):
             obj_params = {}
             for inp in inputs:
                 if isinstance(inp.result, dict):
-                    obj_params.update(inp.result)
+                    # Iterate over each key, and if the type of the value is of instance base model then use model dump
+                    for key, value in inp.result.items():
+                        # Dump the value if it is a BaseModel
+                        if isinstance(value, BaseModel):
+                            obj_params[key] = value.model_dump()
+                        else:
+                            obj_params[key] = value
+                # Dump the value if it is a BaseModel at the top level
+                elif isinstance(inp.result, BaseModel):
+                    obj_params.update(inp.result.model_dump())
 
-            logging.info(f"Initial params to tool are {obj_params}")
+            logging.debug(f"Initial params to tool are {obj_params}")
 
             # First try: standard Pydantic validation
             try:
                 tool_params = tool_params_schema(**obj_params)
-                logging.info(f"Schema generated successfully: {tool_params}")
+                logging.debug(f"Schema generated successfully: {tool_params}")
 
                 # Run the tool with the parameters
                 res = tool_instance._run(tool_params)
                 return [NodeResult(node_id=self.id, result=res, step=inputs[0].step + 1)]
 
             except ValidationError as validation_error:
-                logging.info(f"Validation error: {validation_error}")
+                logging.warning(f"Validation error: {validation_error}")
                 logging.info("Attempting parameter conversion with agent...")
 
                 # Get schema information for the agent to use
@@ -205,13 +215,6 @@ class ToolNodeWithParamsConversion(ToolNode):
                 if isinstance(schema_dict, str):
                     print(f"Schema dict is a string: {schema_dict}")
                     schema_dict = json.loads(schema_dict)
-                # if hasattr(tool_params_schema, "schema") and callable(getattr(tool_params_schema, "schema")):
-                #     schema_dict = tool_params_schema.schema()
-                # else:
-                #     # If schema() method not available, create a minimal schema dict
-                #     schema_dict = {"properties": {}}
-                #     for field_name, field in tool_params_schema.__annotations__.items():
-                #         schema_dict["properties"][field_name] = {"type": str(field)}
 
                 # Try with agent-based conversion, with retries
                 converted_params = None

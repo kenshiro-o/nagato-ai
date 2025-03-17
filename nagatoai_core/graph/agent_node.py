@@ -2,7 +2,7 @@ from __future__ import annotations
 
 # Standard Library
 import string
-from typing import List, Optional
+from typing import List, Optional, Type, Union
 
 # Third Party
 from pydantic import BaseModel, Field
@@ -31,6 +31,7 @@ class AgentNode(AbstractNode):
     tools: Optional[List[AbstractToolProvider]] = None
     temperature: float = 0.7
     max_tokens: int = 150
+    output_schema: Optional[Type[BaseModel]] = None
 
     def execute(self, inputs: List[NodeResult]) -> List[NodeResult]:
         """
@@ -59,6 +60,7 @@ class AgentNode(AbstractNode):
             tools=self.tools,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
+            target_output_schema=self.output_schema,
         )
 
         return [NodeResult(node_id=self.id, result=exchange, step=inputs[0].step + 1)]

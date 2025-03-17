@@ -1,7 +1,7 @@
 # Standard Library
 import uuid
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Union
 
 # Third Party
 from pydantic import BaseModel
@@ -66,7 +66,7 @@ class Agent(ABC):
         tools: List[AbstractToolProvider],
         temperature: float,
         max_tokens: int,
-        target_output_schema: Optional[BaseModel] = None,
+        target_output_schema: Optional[Union[BaseModel, List[BaseModel]]] = None,
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.

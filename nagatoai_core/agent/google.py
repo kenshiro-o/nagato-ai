@@ -166,10 +166,8 @@ class GoogleAgent(Agent):
         for tool in tools:
             fn_call_inputs.append(tool.schema())
 
-        # print(
-        #     f"**** GEMINI INPUT MESSAGE: {self.messages, indent=2)} and function call inputs: {json.dumps(fn_call_inputs, indent=2)}"
-        # )
-        # print(f"**** GEMINI RESPONSE: {json.dumps(response, indent=2)}")
+        print(f"**** GEMINI INPUT MESSAGE: {messages}")
+        print(f"**** GEMINI RESPONSE: {response}")
 
         if response.function_calls:
             for fn in response.function_calls:
