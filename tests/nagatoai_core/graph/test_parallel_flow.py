@@ -1,10 +1,10 @@
 # Standard Library
+import concurrent.futures
 from typing import List
+from unittest.mock import call, patch
 
 # Third Party
 import pytest
-import concurrent.futures
-from unittest.mock import patch, call
 
 # Nagato AI
 from nagatoai_core.graph.abstract_node import AbstractNode

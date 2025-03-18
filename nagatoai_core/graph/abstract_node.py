@@ -23,6 +23,17 @@ class AbstractNode(BaseModel, ABC):
         # Allow arbitrary types (self-referencing types in our case)
         arbitrary_types_allowed = True
 
+    def __hash__(self) -> int:
+        """Make nodes hashable by their ID to enable use in sets and as dictionary keys."""
+        return hash(self.id)
+
+    def __eq__(self, other) -> bool:
+        """Equality comparison based on node ID."""
+        if isinstance(other, AbstractNode):
+            # ID and instance should be the same
+            return self.id == other.id and self == other
+        return False
+
     @abstractmethod
     def execute(self, inputs: List[NodeResult]) -> List[NodeResult]:
         """

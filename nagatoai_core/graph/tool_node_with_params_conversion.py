@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import traceback
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Dict, List
 
 # Third Party
 from bs4 import BeautifulSoup
@@ -12,11 +12,8 @@ from pydantic import BaseModel, Field, ValidationError
 
 # Nagato AI
 from nagatoai_core.agent.agent import Agent
-from nagatoai_core.graph.abstract_node import AbstractNode
 from nagatoai_core.graph.tool_node import ToolNode
 from nagatoai_core.graph.types import NodeResult
-from nagatoai_core.mission.task import Task
-from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 
 
 class ToolNodeWithParamsConversion(ToolNode):
@@ -195,12 +192,12 @@ class ToolNodeWithParamsConversion(ToolNode):
                 elif isinstance(inp.result, BaseModel):
                     obj_params.update(inp.result.model_dump())
 
-            logging.debug(f"Initial params to tool are {obj_params}")
+            logging.info(f"Initial params to tool are {obj_params} and inputs is {inputs}")
 
             # First try: standard Pydantic validation
             try:
                 tool_params = tool_params_schema(**obj_params)
-                logging.debug(f"Schema generated successfully: {tool_params}")
+                logging.info(f"Schema generated successfully: {tool_params}")
 
                 # Run the tool with the parameters
                 res = tool_instance._run(tool_params)
