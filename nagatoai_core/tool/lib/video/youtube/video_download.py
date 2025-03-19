@@ -73,7 +73,7 @@ class YouTubeVideoDownloadConfig(BaseSettings, BaseModel):
         description="The ID of the YouTube video to download.",
     )
 
-    output_path: str = Field(
+    output_folder: str = Field(
         ".",
         description="The output directory path to save the downloaded video.",
     )
@@ -135,11 +135,11 @@ class YouTubeVideoDownloadTool(AbstractTool):
             file_name = "".join(c for c in file_name if c.isalnum() or c in (" ", "-", "_", ".")).rstrip()
 
             # Construct the full output path
-            full_path = os.path.join(config.output_path, file_name)
+            full_path = os.path.join(config.output_folder, file_name)
 
             # Download the video
-            video.download(output_path=config.output_path, filename=file_name)
+            video.download(output_path=config.output_folder, filename=file_name)
 
-            return full_path
+            return {"full_path": full_path}
         except Exception as e:
             raise RuntimeError(f"Error downloading YouTube video: {str(e)}")

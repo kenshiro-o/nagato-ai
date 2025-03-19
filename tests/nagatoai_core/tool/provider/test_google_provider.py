@@ -85,7 +85,7 @@ def test_youtube_video_download_tool_schema(youtube_video_download_tool: YouTube
     assert "ID of the YouTube video" in video_id_prop.description
 
     # Check output_path property
-    output_path_prop = schema.parameters.properties["output_path"]
+    output_path_prop = schema.parameters.properties["output_folder"]
     assert output_path_prop.type == "STRING"
     assert "output directory path" in output_path_prop.description.lower()
 

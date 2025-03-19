@@ -25,7 +25,9 @@ def video_download_tool():
 @pytest.mark.skip(reason="Skipping test_valid_video_download until issue in Github Actions is resolved")
 def test_valid_video_download(video_download_tool, temp_output_dir):
     """Test downloading a valid YouTube video"""
-    config = YouTubeVideoDownloadConfig(video_id="q7_5eCmu0MY", output_path=temp_output_dir, file_name="test_video.mp4")
+    config = YouTubeVideoDownloadConfig(
+        video_id="q7_5eCmu0MY", output_folder=temp_output_dir, file_name="test_video.mp4"
+    )
 
     # Download the video
     output_path = video_download_tool._run(config)
@@ -38,7 +40,7 @@ def test_valid_video_download(video_download_tool, temp_output_dir):
 
 def test_invalid_video_id(video_download_tool, temp_output_dir):
     """Test that an invalid video ID raises an appropriate error"""
-    config = YouTubeVideoDownloadConfig(video_id="not_valid", output_path=temp_output_dir, file_name="test_video.mp4")
+    config = YouTubeVideoDownloadConfig(video_id="not_valid", output_folder=temp_output_dir, file_name="test_video.mp4")
 
     # Attempt to download invalid video
     with pytest.raises(RuntimeError) as exc_info:

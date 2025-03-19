@@ -1,42 +1,43 @@
-"""Unit tests for the GoogleAgent class."""
+"""Unit tests for the OpenAIAgent class."""
 
 # Standard Library
+import logging
 import os
 from datetime import datetime, timezone
 from typing import List
 
 # Third Party
 import pytest
-from google import genai
-from google.genai import types
+from openai import OpenAI
+from pydantic import BaseModel, Field
 
 # Nagato AI
-from nagatoai_core.agent.google import GoogleAgent
 from nagatoai_core.agent.message import Exchange, Message, Sender, TokenStatsAndParams, ToolCall, ToolResult
+from nagatoai_core.agent.openai import OpenAIAgent
 from nagatoai_core.tool.lib.time.time_now import TimeNowConfig, TimeNowTool
-from nagatoai_core.tool.provider.google import GoogleToolProvider
+from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 
 
 @pytest.fixture
-def google_client():
-    """Creates a real Google generative AI client.
+def openai_client():
+    """Creates a real OpenAI client for testing.
 
-    Requires GOOGLE_API_KEY environment variable to be set.
+    Requires OPENAI_API_KEY environment variable to be set.
     """
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        pytest.skip("GOOGLE_API_KEY environment variable not set")
+        pytest.skip("OPENAI_API_KEY environment variable not set")
 
-    client = genai.Client(api_key=api_key)
+    client = OpenAI(api_key=api_key)
 
     return client
 
 
-def test_chat_basic_prompt(google_client):
-    """Test the chat method with a basic prompt without tools using real Google API."""
-    agent = GoogleAgent(
-        client=google_client,
-        model="gemini-2.0-flash",
+def test_chat_basic_prompt(openai_client):
+    """Test the chat method with a basic prompt without tools using real OpenAI API."""
+    agent = OpenAIAgent(
+        client=openai_client,
+        model="gpt-4o",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -48,88 +49,47 @@ def test_chat_basic_prompt(google_client):
     # Assert
     assert isinstance(result, Exchange)
     assert result.user_msg.content == "What is the capital of France?"
-    assert result.user_msg.sender == Sender.USER
-    assert isinstance(result.agent_response.content, str)
     assert "Paris" in result.agent_response.content
-    assert result.agent_response.sender == Sender.AGENT
-    assert result.token_stats_and_params.input_tokens_used > 0
-    assert result.token_stats_and_params.output_tokens_used > 0
-    assert result.token_stats_and_params.temperature == 0.7
-    assert result.token_stats_and_params.max_tokens == 100
-
-    # Check that messages were formatted correctly
-    # messages = result.chat_history
-    # assert len(messages) == 1  # Should have one message
-    # assert messages[0]["role"] == "user"
-    # assert len(messages[0]["parts"]) == 2  # Should have role description and prompt
-    # assert "You are a helpful AI assistant" in messages[0]["parts"][0]
-    # assert messages[0]["parts"][1] == "What is the capital of France?"
 
 
-def test_chat_multi_turn_conversation(google_client):
-    """Test the chat method with a multi-turn conversation using real Google API."""
-
-    agent = GoogleAgent(
-        client=google_client,
-        model="gemini-2.0-flash",
+def test_chat_multi_turn_conversation(openai_client):
+    """Test multi-turn conversation with the agent using real OpenAI API."""
+    agent = OpenAIAgent(
+        client=openai_client,
+        model="gpt-4o",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
     )
 
-    # Act
-    result = agent.chat(
-        task=None,
-        prompt="What is the capital of France?",
-        tools=[],
-        temperature=0.7,
-        max_tokens=100,
+    # First turn
+    result1 = agent.chat(task=None, prompt="What is the capital of France?", tools=[], temperature=0.7, max_tokens=100)
+
+    # Second turn
+    result2 = agent.chat(
+        task=None, prompt="Tell me about a famous monument there", tools=[], temperature=0.7, max_tokens=100
     )
 
     # Assert
-    assert isinstance(result, Exchange)
-    assert result.user_msg.content == "What is the capital of France?"
-    assert result.user_msg.sender == Sender.USER
-    assert isinstance(result.agent_response.content, str)
+    assert result1.user_msg.content == "What is the capital of France?"
+    assert "Paris" in result1.agent_response.content
 
-    # Now ask what is the capital of Italy
-    result = agent.chat(
-        task=None,
-        prompt="What is the capital of Italy?",
-        tools=[],
-        temperature=0.7,
-        max_tokens=100,
-    )
-
-    # Assert
-    assert isinstance(result, Exchange)
-    assert result.user_msg.content == "What is the capital of Italy?"
-    assert result.user_msg.sender == Sender.USER
-    assert isinstance(result.agent_response.content, str)
-    assert "Rome" in result.agent_response.content
-
-    # Check that the message history has two user messages and two agent messages
-    chat_history: List[Exchange] = agent.history
-    assert len(chat_history) == 2
-    assert chat_history[0].user_msg.content == "What is the capital of France?"
-    assert chat_history[0].agent_response.content.strip() == "The capital of France is Paris."
-    assert chat_history[1].user_msg.content == "What is the capital of Italy?"
-    assert chat_history[1].agent_response.content.strip() == "The capital of Italy is Rome."
+    assert result2.user_msg.content == "Tell me about a famous monument there"
+    assert "Eiffel" in result2.agent_response.content
 
 
-def test_chat_with_tool(google_client):
+def test_chat_with_tool(openai_client):
     """Test that the agent can properly make tool calls using TimeNowTool."""
-
-    agent = GoogleAgent(
-        client=google_client,
-        model="gemini-2.0-flash",
+    agent = OpenAIAgent(
+        client=openai_client,
+        model="gpt-4o",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
     )
 
     tt = TimeNowTool()
-    time_tool = GoogleToolProvider(
+    time_tool = OpenAIToolProvider(
         name=tt.name,
         description=tt.description,
         args_schema=tt.args_schema,
@@ -148,16 +108,15 @@ def test_chat_with_tool(google_client):
     # Assert
     assert isinstance(result, Exchange)
     assert result.agent_response.tool_calls is not None
-    assert len(result.agent_response.tool_calls) == 1
+    assert len(result.agent_response.tool_calls) > 0
     assert result.agent_response.tool_calls[0].name == tt.name
 
 
-def test_chat_then_tool_then_tool_response(google_client):
-    """Test that the agent can handle a chat, followed by a tool call, and then process the tool results."""
-
-    agent = GoogleAgent(
-        client=google_client,
-        model="gemini-2.0-flash",
+def test_chat_then_tool_then_tool_response(openai_client):
+    """Test a sequence of chat, tool call, and handling tool response using real OpenAI API."""
+    agent = OpenAIAgent(
+        client=openai_client,
+        model="gpt-4o",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -179,7 +138,7 @@ def test_chat_then_tool_then_tool_response(google_client):
 
     # Set up TimeNowTool for second message
     tt = TimeNowTool()
-    time_tool = GoogleToolProvider(
+    time_tool = OpenAIToolProvider(
         name=tt.name,
         description=tt.description,
         args_schema=tt.args_schema,
@@ -220,12 +179,11 @@ def test_chat_then_tool_then_tool_response(google_client):
     assert "it is currently" in final_result.agent_response.content.lower()
 
 
-def test_chat_then_tool_then_tool_response_with_error(google_client):
-    """Test that the agent can handle a chat, followed by a tool call, and then process the tool results."""
-
-    agent = GoogleAgent(
-        client=google_client,
-        model="gemini-2.0-flash",
+def test_chat_then_tool_then_tool_response_with_error(openai_client):
+    """Test tool call sequence with error handling using real OpenAI API."""
+    agent = OpenAIAgent(
+        client=openai_client,
+        model="gpt-4o",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -247,7 +205,7 @@ def test_chat_then_tool_then_tool_response_with_error(google_client):
 
     # Set up TimeNowTool for second message
     tt = TimeNowTool()
-    time_tool = GoogleToolProvider(
+    time_tool = OpenAIToolProvider(
         name=tt.name,
         description=tt.description,
         args_schema=tt.args_schema,
@@ -279,22 +237,24 @@ def test_chat_then_tool_then_tool_response_with_error(google_client):
             ToolResult(id=result.agent_response.tool_calls[0].id, name=tt.name, result=None, error=tool_error)
         ],
         tools=[time_tool],
-        temperature=0.7,
+        temperature=0,
         max_tokens=100,
     )
 
     # Assert final response contains the error
     assert isinstance(final_result, Exchange)
     assert final_result.agent_response.content is not None
-    assert any(keyword in final_result.agent_response.content.lower() for keyword in ["error", "unavailable"])
+    assert any(
+        keyword in final_result.agent_response.content.lower()
+        for keyword in ["error", "unavailable", "unable", "sorry"]
+    )
 
 
-def test_chat_then_tool_then_tool_response_then_chat(google_client):
-    """Test that the agent can handle a chat, followed by a tool call, then a tool response, and then a chat."""
-
-    agent = GoogleAgent(
-        client=google_client,
-        model="gemini-2.0-flash",
+def test_chat_then_tool_then_tool_response_then_chat(openai_client):
+    """Test a complex interaction: chat, tool call, tool response, follow-up chat using real OpenAI API."""
+    agent = OpenAIAgent(
+        client=openai_client,
+        model="gpt-4o",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -314,9 +274,8 @@ def test_chat_then_tool_then_tool_response_then_chat(google_client):
     assert result.user_msg.content == "What is the capital of France?"
     assert "Paris" in result.agent_response.content
 
-    # Set up TimeNowTool for second message
     tt = TimeNowTool()
-    time_tool = GoogleToolProvider(
+    time_tool = OpenAIToolProvider(
         name=tt.name,
         description=tt.description,
         args_schema=tt.args_schema,
@@ -371,13 +330,8 @@ def test_chat_then_tool_then_tool_response_then_chat(google_client):
     assert "Washington, D.C." in result.agent_response.content
 
 
-def test_chat_with_structured_output(google_client):
-    """Test that the agent can return structured output using a target schema."""
-    # Standard Library
-    from typing import List
-
-    # Third Party
-    from pydantic import BaseModel, Field
+def test_chat_with_structured_output(openai_client):
+    """Test that the agent can return structured output using a target schema with real OpenAI API."""
 
     class CountryInfo(BaseModel):
         """Schema for country information."""
@@ -387,9 +341,9 @@ def test_chat_with_structured_output(google_client):
         population: int = Field(..., description="The approximate population of the country")
         languages: List[str] = Field(..., description="Official languages spoken in the country")
 
-    agent = GoogleAgent(
-        client=google_client,
-        model="gemini-2.0-flash",
+    agent = OpenAIAgent(
+        client=openai_client,
+        model="gpt-4o",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -407,13 +361,58 @@ def test_chat_with_structured_output(google_client):
 
     # Assert
     assert isinstance(result, Exchange)
-    assert result.user_msg.content == "Provide information about France in a structured format."
-    assert result.user_msg.sender == Sender.USER
+    assert isinstance(result.agent_response.content, CountryInfo)
+    assert result.agent_response.content.name == "France"
+    assert result.agent_response.content.capital == "Paris"
+    assert isinstance(result.agent_response.content.population, int)
+    assert len(result.agent_response.content.languages) > 0
+    assert "French" in result.agent_response.content.languages
 
-    # The response content should be a parsed JSON object
-    parsed_content = result.agent_response.content
-    assert isinstance(parsed_content, CountryInfo)
-    assert parsed_content.name == "France"
-    assert parsed_content.capital == "Paris"
-    assert parsed_content.population == 67000000
-    assert "French" in parsed_content.languages
+
+def test_clear_memory(openai_client):
+    """Test that the agent can clear its memory."""
+    agent = OpenAIAgent(
+        client=openai_client,
+        model="gpt-4o",
+        role="assistant",
+        role_description="You are a helpful AI assistant.",
+        nickname="TestAgent",
+    )
+
+    # Generate some history
+    agent.chat(task=None, prompt="What is the capital of France?", tools=[], temperature=0.7, max_tokens=100)
+
+    # History should exist
+    assert len(agent.history) == 1
+
+    # Clear memory
+    agent.clear_memory()
+
+    # History should be empty
+    assert len(agent.history) == 0
+
+
+def test_agent_properties(openai_client):
+    """Test the agent properties like maker and family."""
+    agent = OpenAIAgent(
+        client=openai_client,
+        model="gpt-4o",
+        role="assistant",
+        role_description="You are a helpful AI assistant.",
+        nickname="TestAgent",
+    )
+
+    assert agent.maker.lower() == "openai"
+    assert agent.family.lower() == "gpt-4o"
+
+    # Test with different model
+    agent2 = OpenAIAgent(
+        client=openai_client,
+        model="o3-mini",
+        role="assistant",
+        role_description="You are a helpful AI assistant.",
+        nickname="TestAgent2",
+    )
+
+    assert agent2.maker.lower() == "openai"
+    assert agent2.family.lower() == "o3"

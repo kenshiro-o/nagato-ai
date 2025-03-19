@@ -6,6 +6,7 @@ from typing import List, Optional
 # Third Party
 from groq import Groq
 from groq.types.chat import ChatCompletion
+from pydantic import BaseModel
 
 # Nagato AI
 # Company Libraries
@@ -22,6 +23,7 @@ def extract_groq_model_family(model: str) -> str:
     :param model: The Groq model name.
     """
     family_prefixes = [
+        "qwen-",
         "deepseek-r1",
         "llama-3.1-8b",
         "llama-3.1-70b",
@@ -76,6 +78,7 @@ class GroqAgent(Agent):
         tools: List[OpenAIToolProvider],
         temperature: float,
         max_tokens: int,
+        target_output_schema: Optional[BaseModel] = None,
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
@@ -84,9 +87,21 @@ class GroqAgent(Agent):
         :param tools: the tools available to the agent.
         :param temperature: The temperature of the agent.
         :param max_tokens: The maximum number of tokens to generate.
+        :param target_output_schema: An optional Pydantic model schema for structured output.
         :return: Exchange object containing the user message and the agent response.
         """
         previous_messages = self._build_chat_history()
+
+        if target_output_schema:
+            # Groq doesn't have a native structured output option
+            # So we inject the schema into the prompt
+            prompt = f"""{prompt}
+
+            If not calling a tool then return a JSON object with the schema:
+            {target_output_schema.model_json_schema()}
+
+            Do not return anything apart from the JSON object, not even ``` or ```json.
+            """
 
         current_message = {
             "role": "user",
@@ -118,6 +133,8 @@ class GroqAgent(Agent):
         response_text = response.choices[0].message.content
         tool_calls: List[ToolCall] = []
 
+        self.logger.debug(f"Groq chat response", response=response_text, prompt=prompt)
+
         if response.choices[0].message.tool_calls:
             response_text = response_text + "\n\n" if response_text else ""
             for tool_call in response.choices[0].message.tool_calls:
@@ -130,6 +147,14 @@ class GroqAgent(Agent):
                     )
                 )
                 response_text += f"Tool call requested: {tool_call.function.name} with parameters: {params_json}\n"
+        elif target_output_schema and response_text:
+            try:
+                # Parse the response as JSON and convert it to the target schema
+                response_json = json.loads(response_text)
+                response_text = target_output_schema(**response_json)
+            except (json.JSONDecodeError, TypeError, ValueError) as e:
+                # If parsing fails, keep the original text response
+                pass
 
         exchange = Exchange(
             chat_history=messages,

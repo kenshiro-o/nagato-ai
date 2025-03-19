@@ -6,6 +6,7 @@ from typing import List, Optional
 # Third Party
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
+from pydantic import BaseModel
 
 # Nagato AI
 # Company Libraries
@@ -77,6 +78,7 @@ class OpenAIAgent(Agent):
         tools: List[OpenAIToolProvider],
         temperature: float,
         max_tokens: int,
+        target_output_schema: Optional[BaseModel] = None,
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
@@ -99,29 +101,49 @@ class OpenAIAgent(Agent):
 
         response: Optional[ChatCompletion] = None
         if len(tools) > 0:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                tools=[tool.schema() for tool in tools],
-                tool_choice="auto",
-            )
+            if target_output_schema:
+                response = self.client.beta.chat.completions.parse(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    tools=[tool.schema() for tool in tools],
+                    tool_choice="auto",
+                    response_format=target_output_schema,
+                )
+            else:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    tools=[tool.schema() for tool in tools],
+                    tool_choice="auto",
+                )
         else:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
+            if target_output_schema:
+                response = self.client.beta.chat.completions.parse(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    response_format=target_output_schema,
+                )
+            else:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
 
         msg_receive_time = datetime.now(timezone.utc)
 
-        response_text = response.choices[0].message.content
+        response_content = response.choices[0].message.content
         tool_calls: List[ToolCall] = []
 
         if response.choices[0].message.tool_calls:
-            response_text = response_text + "\n\n" if response_text else ""
+            response_content = response_content + "\n\n" if response_content else ""
             for tool_call in response.choices[0].message.tool_calls:
                 params_json = json.loads(tool_call.function.arguments)
                 tool_calls.append(
@@ -131,18 +153,21 @@ class OpenAIAgent(Agent):
                         parameters=params_json,
                     )
                 )
-                response_text += f"Tool call requested: {tool_call.function.name} with parameters: {params_json}\n"
+                response_content += f"Tool call requested: {tool_call.function.name} with parameters: {params_json}\n"
         else:
             # TODO - dirty hack to avoid empty responses. In the future find a more elegant solution
-            if not response_text:
-                response_text = "OK"
+            if not response_content:
+                response_content = "OK"
+            # TODO check whether we have a structured response
+            if target_output_schema:
+                response_content = response.choices[0].message.parsed
 
         exchange = Exchange(
             chat_history=messages,
             user_msg=Message(sender=Sender.USER, content=prompt, created_at=msg_send_time),
             agent_response=Message(
                 sender=Sender.AGENT,
-                content=response_text,
+                content=response_content,
                 tool_calls=tool_calls,
                 created_at=msg_receive_time,
             ),

@@ -40,11 +40,6 @@ class GroqWhisperConfig(BaseSettings, BaseModel):
         description="The Whisper model to use for transcription. The only option available right now is 'whisper-large-v3'",
     )
 
-    prompt: str = Field(
-        "Specify context or spelling",
-        description="Optional context or spelling information to guide the transcription.",
-    )
-
     response_format: str = Field(
         "verbose_json",
         description="The format of the response. Possible values are 'json' and 'verbose_json'. Default is 'verbose_json'",

@@ -1,10 +1,11 @@
 # Standard Library
 import json
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Type
 
 # Third Party
 from anthropic import Client
+from pydantic import BaseModel
 
 # Nagato AI
 # Company Libraries
@@ -68,6 +69,7 @@ class AnthropicAgent(Agent):
         tools: List[AnthropicToolProvider],
         temperature: float,
         max_tokens: int,
+        target_output_schema: Optional[BaseModel] = None,
     ) -> Exchange:
         """
         Generates a response for the current prompt and prompt history.
@@ -78,6 +80,16 @@ class AnthropicAgent(Agent):
         :param max_tokens: The maximum number of tokens to generate.
         """
         messages = self._build_chat_history()
+
+        if target_output_schema:
+            # Claude doesn't support a structured outputs option
+            # So we cheat by injecting the json schema into the prompt
+            prompt = f"""{prompt}
+
+            If not calling a tool then return a JSON object with the schema:
+            {target_output_schema.model_json_schema()}
+            """
+
         messages.append({"role": "user", "content": prompt})
 
         msg_send_time = datetime.now(timezone.utc)
@@ -101,17 +113,20 @@ class AnthropicAgent(Agent):
 
         msg_receive_time = datetime.now(timezone.utc)
 
-        response_text = ""
+        response_content = ""
         tool_calls: List[ToolCall] = []
 
-        for response_content in response.content:
-            if response_content.type == "text":
+        for response_block in response.content:
+            if response_block.type == "text":
                 # TODO - dirty hack to avoid empty responses. In the future find a more elegant solution
-                response_text = response_content.text if response_content.text else "OK"
-            elif response_content.type == "tool_use":
-                tool_id = response_content.id
-                tool_name = response_content.name
-                tool_input = response_content.input
+                response_content = response_block.text if response_block.text else "OK"
+                if target_output_schema:
+                    response_json = json.loads(response_content)
+                    response_content = target_output_schema(**response_json)
+            elif response_block.type == "tool_use":
+                tool_id = response_block.id
+                tool_name = response_block.name
+                tool_input = response_block.input
 
                 tc = ToolCall(id=tool_id, name=tool_name, parameters=tool_input)
                 tool_calls.append(tc)
@@ -121,7 +136,7 @@ class AnthropicAgent(Agent):
             user_msg=Message(sender=Sender.USER, content=prompt, created_at=msg_send_time),
             agent_response=Message(
                 sender=Sender.AGENT,
-                content=response_text,
+                content=response_content,
                 tool_calls=tool_calls,
                 created_at=msg_receive_time,
             ),
@@ -180,6 +195,7 @@ class AnthropicAgent(Agent):
             )
 
         msg_send_time = datetime.now(timezone.utc)
+
         response = self.client.beta.tools.messages.create(
             model=self.model,
             system=self.role_description,

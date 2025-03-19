@@ -253,6 +253,98 @@ class HumanConfirmInputTool(AbstractTool):
         return confirm
 ```
 
+## Graph-based Agent Systems
+
+Nagato supports creating complex agent systems using a directed acyclic graph (DAG) approach. This allows you to create powerful workflows by connecting different tool nodes and agent nodes.
+
+### Graph Core Concepts
+
+- **Graph**: The main structure that connects all nodes and manages execution flow
+- **Nodes**: Processing units that perform specific tasks:
+  - **Tool Nodes**: Execute specific tools (e.g., YouTube downloader, transcription)
+  - **Agent Nodes**: LLM-based agents that process information
+- **Flows**: Control structures for organizing execution. Some examples:
+  - **SequentialFlow**: Executes nodes in sequence
+  - **TransformerFlow**: Allows manipulation of data between flows
+  - **ConditionalFlow**: Allows branching to a specific flow depending on predictate being true or false
+- **Edges**: Connections between nodes that define the execution path
+
+### Example: YouTube Video Processing Graph
+
+Below is an example of creating a graph that:
+1. Downloads a YouTube video
+2. Transcribes it using Groq's Whisper API
+3. Gets human input for focus areas
+4. Generates a summary using a Gemini agent
+
+```python
+# Initialize tools
+youtube_download_tool = YouTubeVideoDownloadTool()
+groq_whisper_tool = GroqWhisperTool()
+human_input_tool = HumanInputTool()
+
+# Create tool providers
+youtube_download_tool_provider = OpenAIToolProvider(
+    name=youtube_download_tool.name,
+    description=youtube_download_tool.description,
+    args_schema=youtube_download_tool.args_schema,
+    tool=youtube_download_tool,
+)
+# ... similar setup for other tools
+
+# Create agents
+conversion_agent = create_agent(
+    api_key=google_api_key,
+    model="gemini-1.5-flash",
+    role="Parameter Converter",
+    role_description="You convert parameters between different formats.",
+    nickname="Converter",
+)
+
+summary_agent = create_agent(
+    api_key=google_api_key,
+    model="gemini-2.0-flash",
+    role="Video Summarizer",
+    role_description="You summarize video transcripts concisely.",
+    nickname="Summarizer",
+)
+
+# Create nodes
+youtube_download_node = ToolNodeWithParamsConversion(
+    id="youtube_download_node",
+    tool_provider=youtube_download_tool_provider,
+    agent=conversion_agent,
+    retries=2,
+)
+
+# ... create other nodes
+
+# Create flows to organize nodes
+sequential_yt_dl_transcribe_flow = SequentialFlow(
+    id="sequential_yt_dl_transcribe_flow",
+    nodes=[youtube_download_node, groq_whisper_node],
+)
+
+# ... create other flows
+
+# Create and configure the graph
+graph = Graph()
+
+# Add edges to create the workflow
+graph.add_edge(sequential_yt_dl_transcribe_flow, transformer_flow)
+graph.add_edge(transformer_flow, sequential_summary_flow)
+
+# Compile and validate the graph
+graph.compile()
+
+# Run the graph with initial input
+initial_input = [NodeResult(node_id="input", result=input_data, step=0)]
+results = graph.run(initial_input)
+```
+
+In this example, the graph processes a YouTube video through multiple steps. Each node in the graph performs a specific function, and the edges determine how data flows between nodes. The power of this approach is that you can create complex workflows by combining different tools and agents in flexible ways.
+
+Check out the full example in [docs/examples/youtube_transcription_summary_graph.py](docs/examples/youtube_transcription_summary_graph.py).
 
 
 # What's next
@@ -271,6 +363,8 @@ Moreover, there is a lot of functionality currently missing from Nagato. I will 
 * ✅ implement function calling for Google Gemini agent
 * ✅ LLMOps instrumentation (via Langfuse)
 * ✅ Add DeepSeek Agent
+* 🎯 Build DAG/Graph based agentic capability
+* 🎯 Extract Chain of Thought Reasoning
 * 🎯 implement short/long-term memory for agents (with RAG and memory synthesis)
 * 🎯 implement additional modalities (e.g. image, sound, etc.)
 * 🎯 Support for local LLMs (e.g. via Ollama)
