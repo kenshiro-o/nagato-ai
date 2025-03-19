@@ -4,9 +4,6 @@ from __future__ import annotations
 import traceback
 from typing import Callable, List
 
-# Third Party
-from pydantic import Field
-
 # Nagato AI
 from nagatoai_core.graph.abstract_flow import AbstractFlow
 from nagatoai_core.graph.types import NodeResult
@@ -64,6 +61,6 @@ class TransformerFlow(AbstractFlow):
         try:
             return self.functor(inputs, self.flow_param)
         except Exception as e:
-            print(f"Error in TransformerFlow: {e}")
-            print(traceback.format_exc())
+            self.logger.error(f"Error in TransformerFlow", error=e)
+            self.logger.error(traceback.format_exc())
             return [NodeResult(node_id="transformer_flow_error", result=None, error=e)]

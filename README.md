@@ -263,9 +263,10 @@ Nagato supports creating complex agent systems using a directed acyclic graph (D
 - **Nodes**: Processing units that perform specific tasks:
   - **Tool Nodes**: Execute specific tools (e.g., YouTube downloader, transcription)
   - **Agent Nodes**: LLM-based agents that process information
-- **Flows**: Control structures for organizing execution:
+- **Flows**: Control structures for organizing execution. Some examples:
   - **SequentialFlow**: Executes nodes in sequence
   - **TransformerFlow**: Allows manipulation of data between flows
+  - **ConditionalFlow**: Allows branching to a specific flow depending on predictate being true or false
 - **Edges**: Connections between nodes that define the execution path
 
 ### Example: YouTube Video Processing Graph

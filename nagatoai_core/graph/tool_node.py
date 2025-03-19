@@ -1,18 +1,13 @@
 from __future__ import annotations
 
 # Standard Library
-import logging
 import traceback
-from typing import List, Optional, Type
-
-# Third Party
-from pydantic import BaseModel, Field
+from typing import List
 
 # Nagato AI
 # Import necessary modules
 from nagatoai_core.graph.abstract_node import AbstractNode
 from nagatoai_core.graph.types import NodeResult
-from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
 
 
@@ -48,7 +43,7 @@ class ToolNode(AbstractNode):
                 if isinstance(inp.result, dict):
                     obj_params.update(inp.result)
 
-            logging.info(f"*** Params to tool are {obj_params}")
+            self.logger.info(f"Tool params created from inputs", tool_params=obj_params)
 
             # Pick the first input if there are no params and check whether it is the same type as the tool params schema
             if len(obj_params) == 0 and isinstance(inputs[0].result, tool_params_schema):
@@ -56,11 +51,11 @@ class ToolNode(AbstractNode):
             else:
                 tool_params = tool_params_schema(**obj_params)
 
-            logging.info(f"Schema generated is {tool_params}")
+            self.logger.info(f"Tool params created from inputs and schema", tool_params=tool_params)
 
             res = tool_instance._run(tool_params)
             return [NodeResult(node_id=self.id, result=res, step=inputs[0].step + 1)]
         except Exception as e:
-            print(f"An error occurred while trying to run the tool node: {e}")
+            self.logger.error(f"An error occurred while trying to run the tool node: {e}")
             traceback.print_exc()
             return [NodeResult(node_id=self.id, result=None, error=e, step=inputs[0].step + 1)]

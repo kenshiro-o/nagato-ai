@@ -46,13 +46,11 @@ class AgentNode(AbstractNode):
             # Build the prompt data dictionary - we expect the placeholders to be of the form "result_input[i]"
             prompt_data = {"inputs": inputs}
 
-            print(f"Prompt data: {prompt_data}")
+            self.logger.debug(f"Prompt data", prompt_data=prompt_data)
 
             prompt = self.prompt_template.generate_prompt(prompt_data)
 
-            # prompt = self.prompt_template.generate_prompt({"result_input": inputs[0].result})
-
-        print(f"Full Prompt: {prompt}")
+        self.logger.debug(f"Full prompt", prompt=prompt)
 
         exchange = self.agent.chat(
             task=self.task,

@@ -138,7 +138,7 @@ class ToolNodeWithParamsConversion(ToolNode):
             # Format the prompt with the input data and target schema
             full_prompt = conv_prompt.format(input_data=json.dumps(input_data), target_schema=json.dumps(schema_dict))
 
-            print(f"Full prompt: {full_prompt}")
+            self.logger.debug(f"Full prompt to submit to agent converter", prompt=full_prompt)
 
             # Get a response from the agent
             exchange = self.agent.chat(None, full_prompt, [], 0.6, 2000)
@@ -158,8 +158,8 @@ class ToolNodeWithParamsConversion(ToolNode):
             return params_json
 
         except Exception as e:
-            logging.error(traceback.format_exc())
-            logging.error(f"Error converting data: {input_data}. Raw response: {raw_response}. Error: {e}")
+            self.logger.error(traceback.format_exc())
+            self.logger.error(f"Error converting data: {input_data}. Raw response: {raw_response}. Error: {e}")
             raise e
 
     def execute(self, inputs: List[NodeResult]) -> List[NodeResult]:
@@ -192,25 +192,25 @@ class ToolNodeWithParamsConversion(ToolNode):
                 elif isinstance(inp.result, BaseModel):
                     obj_params.update(inp.result.model_dump())
 
-            logging.info(f"Initial params to tool are {obj_params} and inputs is {inputs}")
+            self.logger.info(f"Initial params to tool", tool_params=obj_params, inputs=inputs)
 
             # First try: standard Pydantic validation
             try:
                 tool_params = tool_params_schema(**obj_params)
-                logging.info(f"Schema generated successfully: {tool_params}")
+                self.logger.info(f"Schema generated successfully", tool_params=tool_params)
 
                 # Run the tool with the parameters
                 res = tool_instance._run(tool_params)
                 return [NodeResult(node_id=self.id, result=res, step=inputs[0].step + 1)]
 
             except ValidationError as validation_error:
-                logging.warning(f"Validation error: {validation_error}")
-                logging.info("Attempting parameter conversion with agent...")
+                self.logger.warning(f"Validation error", error=validation_error)
+                self.logger.info("Attempting parameter conversion with agent...")
 
                 # Get schema information for the agent to use
                 schema_dict = self.tool_provider.schema()
                 if isinstance(schema_dict, str):
-                    print(f"Schema dict is a string: {schema_dict}")
+                    self.logger.info(f"Schema dict is a string", schema_dict=schema_dict)
                     schema_dict = json.loads(schema_dict)
 
                 # Try with agent-based conversion, with retries
@@ -219,22 +219,22 @@ class ToolNodeWithParamsConversion(ToolNode):
 
                 for attempt in range(self.retries + 1):
                     try:
-                        logging.info(f"Conversion attempt {attempt + 1} of {self.retries + 1}")
+                        self.logger.info(f"Conversion attempt", attempt=attempt + 1, total=self.retries + 1)
 
                         # Convert parameters using the agent
                         converted_params = self._convert_params(obj_params, schema_dict)
-                        logging.info(f"Converted params: {converted_params}")
+                        self.logger.info(f"Converted params", converted_params=converted_params)
 
                         # Try to validate the converted parameters
                         tool_params = tool_params_schema(**converted_params)
-                        logging.info(f"Schema generated successfully after conversion: {tool_params}")
+                        self.logger.info(f"Schema generated successfully after conversion", tool_params=tool_params)
 
                         # Run the tool with the converted parameters
                         res = tool_instance._run(tool_params)
                         return [NodeResult(node_id=self.id, result=res, step=inputs[0].step + 1)]
 
                     except Exception as e:
-                        logging.error(f"Error in conversion attempt {attempt + 1}: {e}")
+                        self.logger.error(f"Error in conversion attempt", attempt=attempt + 1, error=e)
                         last_error = e
 
                         # Continue to next retry attempt if available
@@ -246,6 +246,6 @@ class ToolNodeWithParamsConversion(ToolNode):
 
         except Exception as e:
             error_msg = f"An error occurred while trying to run the tool node with parameter conversion: {e}"
-            logging.error(error_msg)
+            self.logger.error(error_msg)
             traceback.print_exc()
             return [NodeResult(node_id=self.id, result=None, error=e, step=inputs[0].step + 1)]
