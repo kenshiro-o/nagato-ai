@@ -47,7 +47,6 @@ def test_schema_excludes_api_key():
     expected_fields = [
         "file_path",
         "model",
-        "prompt",
         "response_format",
         "language",
         "temperature",

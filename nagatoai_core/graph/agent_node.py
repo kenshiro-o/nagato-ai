@@ -63,4 +63,4 @@ class AgentNode(AbstractNode):
             target_output_schema=self.output_schema,
         )
 
-        return [NodeResult(node_id=self.id, result=exchange, step=inputs[0].step + 1)]
+        return [NodeResult(node_id=self.id, result=exchange.agent_response.content, step=inputs[0].step + 1)]
