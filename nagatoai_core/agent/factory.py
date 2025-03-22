@@ -56,6 +56,32 @@ def create_agent(api_key: str, model: str, role: str, role_description: str, nic
     raise ValueError(f"Unsupported model: {model}")
 
 
+def get_agent_type(model: str) -> Type[Agent]:
+    """
+    Gets the agent type based on the model string.
+
+    :param model: The model string to check.
+    :return: The appropriate agent type class.
+    :raises ValueError: If the model is not supported.
+    """
+    if model.startswith("gpt") or model.startswith("o1") or model.startswith("o3"):
+        return OpenAIAgent
+
+    if model.startswith("deepseek"):
+        return DeepSeekAgent
+
+    if model.startswith("claude"):
+        return AnthropicAgent
+
+    if model.startswith("groq-"):
+        return GroqAgent
+
+    if model.startswith("gemini"):
+        return GoogleAgent
+
+    raise ValueError(f"Unsupported model: {model}")
+
+
 def get_agent_tool_provider(agent: Agent) -> Type[AbstractToolProvider]:
     """
     Gets the tool provider for the agent.
