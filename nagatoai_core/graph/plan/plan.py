@@ -1,7 +1,10 @@
+# Standard Library
 from typing import Dict, Type
 
+# Third Party
 from pydantic import BaseModel, ConfigDict
 
+# Nagato AI
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.graph.graph import Graph
 

@@ -1,8 +1,9 @@
 # Standard Library
+import importlib
+import logging
 import os
 import re
 from typing import Dict, Tuple, Type
-import logging
 
 # Third Party
 from bs4 import BeautifulSoup
@@ -10,51 +11,45 @@ from pydantic import BaseModel
 
 # Nagato AI
 from nagatoai_core.agent.agent import Agent
-from nagatoai_core.agent.factory import create_agent, get_agent_type, get_agent_tool_provider
-from nagatoai_core.agent.openai import OpenAIAgent
-from nagatoai_core.agent.deepseek import DeepSeekAgent
 from nagatoai_core.agent.anthropic import AnthropicAgent
-from nagatoai_core.agent.groq import GroqAgent
+from nagatoai_core.agent.deepseek import DeepSeekAgent
+from nagatoai_core.agent.factory import create_agent, get_agent_tool_provider, get_agent_type
 from nagatoai_core.agent.google import GoogleAgent
+from nagatoai_core.agent.groq import GroqAgent
+from nagatoai_core.agent.openai import OpenAIAgent
+from nagatoai_core.graph.abstract_node import AbstractNode
+from nagatoai_core.graph.agent_node import AgentNode
+from nagatoai_core.graph.conditional_flow import ConditionalFlow
+from nagatoai_core.graph.graph import Graph
+from nagatoai_core.graph.parallel_flow import ParallelFlow
 from nagatoai_core.graph.plan.base_model_generator import BaseModelGenerator
 from nagatoai_core.graph.plan.plan import Plan
-from nagatoai_core.graph.agent_node import AgentNode
-from nagatoai_core.graph.abstract_node import AbstractNode
-from nagatoai_core.graph.graph import Graph
+from nagatoai_core.graph.sequential_flow import SequentialFlow
+from nagatoai_core.graph.tool_node_with_params_conversion import ToolNodeWithParamsConversion
+from nagatoai_core.graph.types import ComparisonType, PredicateJoinType
 from nagatoai_core.prompt.template.prompt_template import PromptTemplate
-from nagatoai_core.tool.registry import ToolRegistry
-from nagatoai_core.tool.lib.readwise.book_finder import (
-    ReadwiseDocumentFinderTool,
-)
-from nagatoai_core.tool.lib.readwise.highlights_lister import (
-    ReadwiseHighightsListerTool,
-)
-from nagatoai_core.tool.lib.readwise.book_highlights_lister import (
-    ReadwiseBookHighlightsListerTool,
-)
-from nagatoai_core.tool.lib.human.confirm import (
-    HumanConfirmInputTool,
-)
-from nagatoai_core.tool.lib.human.input import HumanInputTool
-from nagatoai_core.tool.lib.web.page_scraper import WebPageScraperTool
-from nagatoai_core.tool.lib.web.serper_search import SerperSearchTool
-from nagatoai_core.tool.lib.filesystem.text_file_reader import TextFileReaderTool
-from nagatoai_core.tool.lib.filesystem.text_file_writer import TextFileWriterTool
-from nagatoai_core.tool.lib.filesystem.file_checker import FileCheckerTool
-from nagatoai_core.tool.lib.time.time_offset import TimeOffsetTool
-from nagatoai_core.tool.lib.time.time_now import TimeNowTool
-from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDownloadTool
-from nagatoai_core.tool.lib.video.details_checker import VideoCheckerTool
-from nagatoai_core.tool.lib.audio.stt.groq_whisper import GroqWhisperTool
+from nagatoai_core.tool.lib.audio.afplay import AfPlayTool
 from nagatoai_core.tool.lib.audio.stt.assemblyai import AssemblyAITranscriptionTool
+from nagatoai_core.tool.lib.audio.stt.groq_whisper import GroqWhisperTool
 from nagatoai_core.tool.lib.audio.stt.openai_whisper import OpenAIWhisperTool
+from nagatoai_core.tool.lib.audio.tts.eleven_labs import ElevenLabsTTSTool
 from nagatoai_core.tool.lib.audio.tts.openai import OpenAITTSTool
 from nagatoai_core.tool.lib.audio.video_to_mp3 import VideoToMP3Tool
-from nagatoai_core.tool.lib.audio.tts.eleven_labs import ElevenLabsTTSTool
-from nagatoai_core.tool.lib.audio.afplay import AfPlayTool
-from nagatoai_core.graph.tool_node_with_params_conversion import ToolNodeWithParamsConversion
-from nagatoai_core.graph.sequential_flow import SequentialFlow
-from nagatoai_core.graph.parallel_flow import ParallelFlow
+from nagatoai_core.tool.lib.filesystem.file_checker import FileCheckerTool
+from nagatoai_core.tool.lib.filesystem.text_file_reader import TextFileReaderTool
+from nagatoai_core.tool.lib.filesystem.text_file_writer import TextFileWriterTool
+from nagatoai_core.tool.lib.human.confirm import HumanConfirmInputTool
+from nagatoai_core.tool.lib.human.input import HumanInputTool
+from nagatoai_core.tool.lib.readwise.book_finder import ReadwiseDocumentFinderTool
+from nagatoai_core.tool.lib.readwise.book_highlights_lister import ReadwiseBookHighlightsListerTool
+from nagatoai_core.tool.lib.readwise.highlights_lister import ReadwiseHighightsListerTool
+from nagatoai_core.tool.lib.time.time_now import TimeNowTool
+from nagatoai_core.tool.lib.time.time_offset import TimeOffsetTool
+from nagatoai_core.tool.lib.video.details_checker import VideoCheckerTool
+from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDownloadTool
+from nagatoai_core.tool.lib.web.page_scraper import WebPageScraperTool
+from nagatoai_core.tool.lib.web.serper_search import SerperSearchTool
+from nagatoai_core.tool.registry import ToolRegistry
 
 
 class XMLPlanParser:
@@ -311,6 +306,11 @@ class XMLPlanParser:
         # Parse parallel_flow nodes
         for parallel_flow in nodes_node.find_all("parallel_flow"):
             node = self.parse_parallel_flow(parallel_flow, agents, output_schemas, tool_registry)
+            nodes[node.id] = node
+
+        # Parse conditional_flow nodes
+        for conditional_flow in nodes_node.find_all("conditional_flow"):
+            node = self.parse_conditional_flow(conditional_flow, agents, output_schemas, tool_registry)
             nodes[node.id] = node
 
         # Add other node types here when implemented
@@ -591,6 +591,147 @@ class XMLPlanParser:
         # Create and return the ParallelFlow
         return ParallelFlow(id=flow_id, name=node_name, nodes=nested_nodes, max_workers=max_workers)
 
+    def parse_conditional_flow(
+        self,
+        conditional_flow_bs: BeautifulSoup,
+        agents: Dict[str, Agent],
+        output_schemas: Dict[str, Type[BaseModel]],
+        tool_registry: ToolRegistry,
+    ) -> ConditionalFlow:
+        """Parse a conditional flow node.
+
+        Args:
+            conditional_flow_bs: Tag containing conditional flow node.
+            agents: Agents to use when parsing nodes.
+            output_schemas: Output schemas to use when parsing nodes.
+            tool_registry: Tool registry to use when parsing nodes.
+
+        Returns:
+            ConditionalFlow node.
+        """
+        # Extract required attributes
+        flow_id = conditional_flow_bs.get("id")
+        if not flow_id:
+            raise ValueError("Missing required attribute 'id' in conditional_flow")
+
+        flow_name = conditional_flow_bs.get("name", flow_id)
+
+        # Extract configuration parameters
+        broadcast_comparison = False
+        broadcast_elem = conditional_flow_bs.find("broadcast_comparison")
+        if broadcast_elem and broadcast_elem.text.strip().lower() == "true":
+            broadcast_comparison = True
+
+        input_index = 0
+        index_elem = conditional_flow_bs.find("input_index")
+        if index_elem and index_elem.text.strip():
+            input_index = int(index_elem.text.strip())
+
+        input_attribute = None
+        attr_elem = conditional_flow_bs.find("input_attribute")
+        if attr_elem and attr_elem.text.strip():
+            input_attribute = attr_elem.text.strip()
+
+        comparison_value = None
+        value_elem = conditional_flow_bs.find("comparison_value")
+        if value_elem and value_elem.text.strip():
+            comparison_value = value_elem.text.strip()
+
+        comparison_type = ComparisonType.EQUAL
+        type_elem = conditional_flow_bs.find("comparison_type")
+        if type_elem and type_elem.text.strip():
+            comparison_type = ComparisonType[type_elem.text.strip()]
+
+        # Handle custom comparison function
+        custom_comparison_fn = None
+        custom_fn_elem = conditional_flow_bs.find("custom_comparison_function")
+        if custom_fn_elem:
+            module_name = self._get_node_text(custom_fn_elem, "module")
+            function_name = self._get_node_text(custom_fn_elem, "function")
+            custom_comparison_fn = self._get_comparison_function(module_name, function_name)
+
+        predicate_join_type = PredicateJoinType.AND
+        join_elem = conditional_flow_bs.find("predicate_join_type")
+        if join_elem and join_elem.text.strip():
+            predicate_join_type = PredicateJoinType[join_elem.text.strip()]
+
+        # Parse positive path
+        positive_path = None
+        positive_path_elem = conditional_flow_bs.find("positive_path", recursive=False)
+        if positive_path_elem:
+            # Check for each possible node type in positive_path
+            child_nodes = positive_path_elem.find_all(
+                [
+                    "agent_node",
+                    "tool_node_with_params_conversion",
+                    "sequential_flow",
+                    "parallel_flow",
+                    "conditional_flow",
+                ],
+                recursive=False,
+            )
+            if child_nodes:
+                # Parse the first child node
+                node_elem = child_nodes[0]
+                tag_name = node_elem.name
+
+                if tag_name == "agent_node":
+                    positive_path = self.parse_agent_node(node_elem, agents, output_schemas, tool_registry)
+                elif tag_name == "tool_node_with_params_conversion":
+                    positive_path = self.parse_tool_node_with_params_conversion(node_elem, agents, tool_registry)
+                elif tag_name == "sequential_flow":
+                    positive_path = self.parse_sequential_flow(node_elem, agents, output_schemas, tool_registry)
+                elif tag_name == "parallel_flow":
+                    positive_path = self.parse_parallel_flow(node_elem, agents, output_schemas, tool_registry)
+                elif tag_name == "conditional_flow":
+                    positive_path = self.parse_conditional_flow(node_elem, agents, output_schemas, tool_registry)
+
+        # Parse negative path (similar to positive path)
+        negative_path = None
+        negative_path_elem = conditional_flow_bs.find("negative_path", recursive=False)
+        if negative_path_elem:
+            # Similar implementation as positive_path
+            child_nodes = negative_path_elem.find_all(
+                [
+                    "agent_node",
+                    "tool_node_with_params_conversion",
+                    "sequential_flow",
+                    "parallel_flow",
+                    "conditional_flow",
+                ],
+                recursive=False,
+            )
+            if child_nodes:
+                # Parse the first child node
+                node_elem = child_nodes[0]
+                tag_name = node_elem.name
+
+                if tag_name == "agent_node":
+                    negative_path = self.parse_agent_node(node_elem, agents, output_schemas, tool_registry)
+                elif tag_name == "tool_node_with_params_conversion":
+                    negative_path = self.parse_tool_node_with_params_conversion(node_elem, agents, tool_registry)
+                elif tag_name == "sequential_flow":
+                    negative_path = self.parse_sequential_flow(node_elem, agents, output_schemas, tool_registry)
+                elif tag_name == "parallel_flow":
+                    negative_path = self.parse_parallel_flow(node_elem, agents, output_schemas, tool_registry)
+                elif tag_name == "conditional_flow":
+                    negative_path = self.parse_conditional_flow(node_elem, agents, output_schemas, tool_registry)
+
+        # Create and return the ConditionalFlow
+        return ConditionalFlow(
+            id=flow_id,
+            name=flow_name,
+            broadcast_comparison=broadcast_comparison,
+            input_index=input_index,
+            input_attribute=input_attribute,
+            comparison_value=comparison_value,
+            comparison_type=comparison_type,
+            custom_comparison_fn=custom_comparison_fn,
+            predicate_join_type=predicate_join_type,
+            positive_path=positive_path,
+            negative_path=negative_path,
+        )
+
     def parse_graph(self, graph_node: BeautifulSoup, node_dict: Dict[str, AbstractNode]) -> Graph:
         """
         Parse a graph structure from XML and build a Graph object.
@@ -641,3 +782,20 @@ class XMLPlanParser:
         graph.compile()
 
         return graph
+
+    def _get_comparison_function(self, module_name, function_name):
+        """
+        Dynamically import a comparison function.
+
+        Args:
+            module_name: The full module path
+            function_name: The function name in the module
+
+        Returns:
+            The imported callable function
+        """
+        try:
+            module = importlib.import_module(module_name)
+            return getattr(module, function_name)
+        except (ImportError, AttributeError) as e:
+            raise ValueError(f"Failed to import comparison function {function_name} from {module_name}: {str(e)}")

@@ -45,10 +45,10 @@ class ConditionalFlow(AbstractFlow):
     predicate_join_type: PredicateJoinType = PredicateJoinType.AND
 
     # The node or flow to execute if the condition is true
-    positive_path: Union[AbstractNode, AbstractFlow]
+    positive_path: AbstractNode
 
     # The node or flow to execute if the condition is false (optional)
-    negative_path: Optional[Union[AbstractNode, AbstractFlow]] = None
+    negative_path: Optional[AbstractNode] = None
 
     @root_validator(skip_on_failure=True)
     def validate_paths(cls, values):

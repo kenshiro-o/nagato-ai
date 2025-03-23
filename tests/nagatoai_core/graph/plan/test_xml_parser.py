@@ -1,9 +1,9 @@
 """Unit tests for XMLPlanParser class."""
 
 # Standard Library
-from typing import Type
-from unittest.mock import Mock, patch
+import logging
 import os
+from unittest.mock import Mock, patch
 
 # Third Party
 import pytest
@@ -12,19 +12,19 @@ from pydantic import BaseModel
 
 # Nagato AI
 from nagatoai_core.agent.agent import Agent
+from nagatoai_core.agent.openai import OpenAIAgent
+from nagatoai_core.graph.agent_node import AgentNode
+from nagatoai_core.graph.conditional_flow import ConditionalFlow
+from nagatoai_core.graph.graph import Graph
+from nagatoai_core.graph.parallel_flow import ParallelFlow
 from nagatoai_core.graph.plan.plan import Plan
 from nagatoai_core.graph.plan.xml_parser import XMLPlanParser
-from nagatoai_core.graph.graph import Graph
-from nagatoai_core.graph.tool_node_with_params_conversion import ToolNodeWithParamsConversion
 from nagatoai_core.graph.sequential_flow import SequentialFlow
-from nagatoai_core.graph.parallel_flow import ParallelFlow
-from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
-from nagatoai_core.tool.provider.openai import OpenAIToolProvider
-from nagatoai_core.graph.agent_node import AgentNode
-
-# Import actual tools
+from nagatoai_core.graph.tool_node_with_params_conversion import ToolNodeWithParamsConversion
+from nagatoai_core.graph.types import ComparisonType, PredicateJoinType
 from nagatoai_core.tool.lib.human.input import HumanInputTool
 from nagatoai_core.tool.lib.readwise.book_finder import ReadwiseDocumentFinderTool
+from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 
 
 @pytest.fixture
@@ -81,8 +81,6 @@ def mock_agent():
 @patch("nagatoai_core.graph.plan.xml_parser.os.getenv")
 def test_parse_agent(mock_getenv, mock_create_agent, mock_get_agent_type, parser: XMLPlanParser, agent_xml, mock_agent):
     """Test parsing a single agent XML node."""
-    # Set up mocks
-    from nagatoai_core.agent.openai import OpenAIAgent
 
     mock_get_agent_type.return_value = OpenAIAgent
     mock_getenv.return_value = "fake-api-key"
@@ -153,7 +151,6 @@ def test_get_node_text_missing_node(parser: XMLPlanParser, agent_xml: BeautifulS
 @patch("nagatoai_core.graph.plan.xml_parser.os.getenv")
 def test_get_api_key_missing_env_var(mock_getenv, mock_get_agent_type, parser):
     """Test getting API key when environment variable is not set."""
-    from nagatoai_core.agent.openai import OpenAIAgent
 
     mock_get_agent_type.return_value = OpenAIAgent
     mock_getenv.return_value = None
@@ -443,13 +440,12 @@ def test_parse_agent_node_with_tools(mock_get_agent_tool_provider, parser, agent
 @patch("nagatoai_core.graph.plan.xml_parser.get_agent_tool_provider")
 def test_parse_agent_node_without_schema(mock_get_agent_tool_provider, parser, agent_node_xml, mock_agent):
     """Test parsing an agent node without output schema."""
-    # Setup
     agents = {"agent1": mock_agent}
     output_schemas = {"Person": type("Person", (BaseModel,), {})}
     tool_registry = Mock()
 
     # Mock the tool provider class
-    from nagatoai_core.tool.provider.openai import OpenAIToolProvider
+    # Nagato AI
 
     mock_get_agent_tool_provider.return_value = OpenAIToolProvider
 
@@ -1439,3 +1435,354 @@ def test_parse_nodes_with_parallel_flow(mock_get_agent_tool_provider, parser, mo
     assert isinstance(nodes["parallel_flow"], ParallelFlow)
     assert len(nodes["parallel_flow"].nodes) == 1
     assert nodes["parallel_flow"].nodes[0].id == "flow_agent_node"
+
+
+@pytest.fixture
+def conditional_flow_xml():
+    """Fixture for a basic conditional flow XML."""
+    return BeautifulSoup(
+        """
+        <conditional_flow id="test_flow" name="Test Conditional Flow">
+            <broadcast_comparison>false</broadcast_comparison>
+            <input_index>0</input_index>
+            <input_attribute>status</input_attribute>
+            <comparison_value>active</comparison_value>
+            <comparison_type>EQUAL</comparison_type>
+            <predicate_join_type>AND</predicate_join_type>
+            <positive_path>
+                <agent_node id="positive_node" name="Positive Node">
+                    <agent name="test_agent"/>
+                    <temperature>0.7</temperature>
+                    <max_tokens>150</max_tokens>
+                </agent_node>
+            </positive_path>
+            <negative_path>
+                <agent_node id="negative_node" name="Negative Node">
+                    <agent name="test_agent"/>
+                    <temperature>0.5</temperature>
+                    <max_tokens>100</max_tokens>
+                </agent_node>
+            </negative_path>
+        </conditional_flow>
+        """,
+        "xml",
+    ).find("conditional_flow")
+
+
+@pytest.fixture
+def conditional_flow_custom_comparison_xml():
+    """Fixture for a conditional flow XML with custom comparison function."""
+    return BeautifulSoup(
+        """
+        <conditional_flow id="custom_flow" name="Custom Comparison Flow">
+            <broadcast_comparison>true</broadcast_comparison>
+            <input_index>0</input_index>
+            <comparison_value>test</comparison_value>
+            <custom_comparison_function>
+                <module>nagatoai_core.graph.comparison_functions</module>
+                <function>starts_with</function>
+            </custom_comparison_function>
+            <predicate_join_type>OR</predicate_join_type>
+            <positive_path>
+                <agent_node id="positive_node" name="Positive Node">
+                    <agent name="test_agent"/>
+                    <temperature>0.7</temperature>
+                    <max_tokens>150</max_tokens>
+                </agent_node>
+            </positive_path>
+        </conditional_flow>
+        """,
+        "xml",
+    ).find("conditional_flow")
+
+
+@pytest.fixture
+def conditional_flow_nested_xml():
+    """Fixture for a conditional flow XML with nested flows."""
+
+    xml_string = """
+    <conditional_flow id="nested_flow" name="Nested Flow">
+        <comparison_value>10</comparison_value>
+        <comparison_type>GREATER_THAN</comparison_type>
+        <positive_path>
+            <conditional_flow id="inner_flow" name="Inner Flow">
+                <comparison_value>20</comparison_value>
+                <comparison_type>LESS_THAN</comparison_type>
+                <positive_path>
+                    <agent_node id="inner_positive_node" name="Inner Positive">
+                        <agent name="test_agent"/>
+                    </agent_node>
+                </positive_path>
+                <negative_path>
+                    <agent_node id="inner_negative_node" name="Inner Negative">
+                        <agent name="test_agent"/>
+                    </agent_node>
+                </negative_path>
+            </conditional_flow>
+        </positive_path>
+        <negative_path>
+            <sequential_flow id="seq_flow" name="Sequential Flow">
+                <nodes>
+                    <agent_node id="seq_node1" name="Seq Node 1">
+                        <agent name="test_agent"/>
+                    </agent_node>
+                    <agent_node id="seq_node2" name="Seq Node 2">
+                        <agent name="test_agent"/>
+                    </agent_node>
+                </nodes>
+            </sequential_flow>
+        </negative_path>
+    </conditional_flow>
+    """
+    logging.info(f"Original XML string: {xml_string}")
+
+    # Try using lxml parser instead of xml parser
+    soup = BeautifulSoup(xml_string, "lxml-xml")
+    result = soup.find("conditional_flow")
+
+    # Debug the structure of the negative path
+    negative_path = result.find("negative_path", recursive=False)
+    logging.info(f"negative_path_elem: {negative_path}")
+    seq_flow = negative_path.find("sequential_flow", recursive=False) if negative_path else None
+    logging.info(f"sequential_flow in negative path: {seq_flow}")
+
+    if seq_flow:
+        logging.info(f"sequential_flow id: {seq_flow.get('id')}")
+        nodes_elem = seq_flow.find("nodes", recursive=False)
+        logging.info(f"nodes element: {nodes_elem}")
+        if nodes_elem:
+            agent_nodes = nodes_elem.find_all("agent_node", recursive=False)
+            logging.info(f"Number of agent nodes: {len(agent_nodes)}")
+            for i, node in enumerate(agent_nodes):
+                logging.info(f"Agent node {i} id: {node.get('id')}")
+
+    # Create an XML string which is known to parse correctly
+    logging.info(f"Result structure: {result}")
+
+    return result
+
+
+@pytest.fixture
+def conditional_flow_without_id_xml():
+    """Fixture for a conditional flow XML without an ID."""
+    return BeautifulSoup(
+        """
+        <conditional_flow name="No ID Flow">
+            <comparison_value>active</comparison_value>
+            <comparison_type>EQUAL</comparison_type>
+            <positive_path>
+                <agent_node id="positive_node" name="Positive Node">
+                    <agent name="test_agent"/>
+                </agent_node>
+            </positive_path>
+        </conditional_flow>
+        """,
+        "xml",
+    ).find("conditional_flow")
+
+
+@pytest.fixture
+def conditional_flow_without_paths_xml():
+    """Fixture for a conditional flow XML without any paths."""
+    return BeautifulSoup(
+        """
+        <conditional_flow id="no_paths_flow" name="No Paths Flow">
+            <comparison_value>active</comparison_value>
+            <comparison_type>EQUAL</comparison_type>
+        </conditional_flow>
+        """,
+        "xml",
+    ).find("conditional_flow")
+
+
+@pytest.fixture
+def mock_starts_with_function():
+    """Mock function for testing custom comparison functions."""
+
+    def starts_with(value, prefix):
+        if isinstance(value, str):
+            return value.startswith(prefix)
+        return False
+
+    return starts_with
+
+
+@patch("nagatoai_core.graph.plan.xml_parser.importlib.import_module")
+def test_parse_conditional_flow_with_custom_comparison(
+    mock_import_module,
+    parser,
+    conditional_flow_custom_comparison_xml,
+    mock_starts_with_function,
+):
+    """Test parsing a conditional flow XML with custom comparison function."""
+    # Create a mock that will pass isinstance checks for OpenAIAgent
+    mock_agent = Mock(spec=OpenAIAgent)
+    # Make this mock pass isinstance checks with OpenAIAgent
+    mock_agent.__class__ = OpenAIAgent
+
+    agents = {"test_agent": mock_agent}
+    output_schemas = {}
+
+    # Mock the module import to return our mock function
+    mock_module = type("module", (), {})()
+    mock_module.starts_with = mock_starts_with_function
+    mock_import_module.return_value = mock_module
+
+    # Execute
+    result = parser.parse_conditional_flow(conditional_flow_custom_comparison_xml, agents, output_schemas, None)
+
+    # Verify
+    assert isinstance(result, ConditionalFlow)
+    assert result.id == "custom_flow"
+    assert result.broadcast_comparison is True
+    assert result.comparison_value == "test"
+    assert result.custom_comparison_fn is not None
+    assert result.predicate_join_type == PredicateJoinType.OR
+    assert result.positive_path is not None
+    assert result.positive_path.id == "positive_node"
+    assert result.negative_path is None
+
+
+@patch("nagatoai_core.graph.plan.xml_parser.get_agent_tool_provider")
+def test_parse_conditional_flow_nested(mock_get_agent_tool_provider, parser, conditional_flow_nested_xml):
+    """Test parsing a conditional flow XML with nested flows."""
+    # Setup
+
+    # Create a mock that will pass isinstance checks for OpenAIAgent
+    mock_agent = Mock(spec=OpenAIAgent)
+    mock_agent.__class__ = OpenAIAgent
+
+    agents = {"test_agent": mock_agent}
+    output_schemas = {}
+
+    # Make sure the tool provider returns a proper OpenAIToolProvider
+    mock_get_agent_tool_provider.return_value = OpenAIToolProvider
+
+    # Debug the XML structure
+    negative_path_elem = conditional_flow_nested_xml.find("negative_path", recursive=False)
+    logging.info(f"negative_path_elem: {negative_path_elem}")
+    seq_flow = negative_path_elem.find("sequential_flow", recursive=False) if negative_path_elem else None
+    logging.info(f"sequential_flow in negative path: {seq_flow}")
+
+    if seq_flow:
+        logging.info(f"sequential_flow id: {seq_flow.get('id')}")
+        nodes_elem = seq_flow.find("nodes", recursive=False)
+        logging.info(f"nodes element: {nodes_elem}")
+        if nodes_elem:
+            agent_nodes = nodes_elem.find_all("agent_node", recursive=False)
+            logging.info(f"Number of agent nodes: {len(agent_nodes)}")
+            for i, node in enumerate(agent_nodes):
+                logging.info(f"Agent node {i} id: {node.get('id')}")
+
+    # Execute
+    result = parser.parse_conditional_flow(conditional_flow_nested_xml, agents, output_schemas, None)
+
+    # Verify
+    assert isinstance(result, ConditionalFlow)
+    assert result.id == "nested_flow"
+    assert result.comparison_value == "10"
+    assert result.comparison_type == ComparisonType.GREATER_THAN
+
+    # Verify positive path is a nested conditional flow
+    assert isinstance(result.positive_path, ConditionalFlow)
+    assert result.positive_path.id == "inner_flow"
+    assert result.positive_path.comparison_value == "20"
+    assert result.positive_path.comparison_type == ComparisonType.LESS_THAN
+    assert result.positive_path.positive_path.id == "inner_positive_node"
+    assert result.positive_path.negative_path.id == "inner_negative_node"
+
+    # Log what's actually in the negative path
+    logging.info(f"Negative path type: {type(result.negative_path)}")
+    logging.info(f"Negative path id: {result.negative_path.id if hasattr(result.negative_path, 'id') else None}")
+
+    # Fix the test with proper assertion for what should be there
+    assert isinstance(result.negative_path, SequentialFlow)
+    assert result.negative_path.id == "seq_flow"
+
+
+def test_parse_conditional_flow_without_id(parser, conditional_flow_without_id_xml):
+    """Test parsing a conditional flow XML without an ID throws an error."""
+    with pytest.raises(ValueError, match="Missing required attribute 'id' in conditional_flow"):
+        parser.parse_conditional_flow(conditional_flow_without_id_xml, {}, {}, None)
+
+
+@patch("nagatoai_core.graph.plan.xml_parser.get_agent_tool_provider")
+def test_parse_nodes_with_conditional_flow(mock_get_agent_tool_provider, parser, mock_agent):
+    """Test parsing nodes that include a conditional flow."""
+    # Setup
+    agents = {"test_agent": mock_agent}
+    output_schemas = {}
+    mock_get_agent_tool_provider.return_value = lambda **kwargs: None
+
+    nodes_xml = BeautifulSoup(
+        """
+        <nodes>
+            <conditional_flow id="test_flow" name="Test Flow">
+                <comparison_value>active</comparison_value>
+                <comparison_type>EQUAL</comparison_type>
+                <positive_path>
+                    <agent_node id="positive_node" name="Positive Node">
+                        <agent name="test_agent"/>
+                    </agent_node>
+                </positive_path>
+                <negative_path>
+                    <agent_node id="negative_node" name="Negative Node">
+                        <agent name="test_agent"/>
+                    </agent_node>
+                </negative_path>
+            </conditional_flow>
+        </nodes>
+        """,
+        "xml",
+    )
+
+    # Execute
+    result = parser.parse_nodes(nodes_xml, agents, output_schemas)
+
+    # Verify
+    assert "test_flow" in result
+    assert isinstance(result["test_flow"], ConditionalFlow)
+    assert result["test_flow"].comparison_value == "active"
+    assert result["test_flow"].comparison_type == ComparisonType.EQUAL
+    assert result["test_flow"].positive_path.id == "positive_node"
+    assert result["test_flow"].negative_path.id == "negative_node"
+
+
+@patch("nagatoai_core.graph.plan.xml_parser.get_agent_tool_provider")
+@patch("nagatoai_core.graph.plan.xml_parser.importlib.import_module")
+def test_get_comparison_function(mock_import_module, mock_get_agent_tool_provider, parser, mock_starts_with_function):
+    """Test the _get_comparison_function method."""
+    # Setup
+    mock_module = type("module", (), {})()
+    mock_module.starts_with = mock_starts_with_function
+    mock_import_module.return_value = mock_module
+
+    # Execute
+    func = parser._get_comparison_function("test_module", "starts_with")
+
+    # Verify
+    assert func is mock_starts_with_function
+    mock_import_module.assert_any_call("test_module")
+
+
+@patch("nagatoai_core.graph.plan.xml_parser.importlib.import_module")
+def test_get_comparison_function_import_error(mock_import_module, parser):
+    """Test the _get_comparison_function method when import fails."""
+    # Setup
+    mock_import_module.side_effect = ImportError("Module not found")
+
+    # Execute and verify
+    with pytest.raises(ValueError, match="Failed to import comparison function"):
+        parser._get_comparison_function("non_existent_module", "some_function")
+
+
+@patch("nagatoai_core.graph.plan.xml_parser.importlib.import_module")
+def test_get_comparison_function_attribute_error(mock_import_module, parser):
+    """Test the _get_comparison_function method when function is not found."""
+    # Setup
+    mock_module = type("module", (), {})()
+    mock_import_module.return_value = mock_module
+
+    # Execute and verify
+    with pytest.raises(ValueError, match="Failed to import comparison function"):
+        parser._get_comparison_function("test_module", "non_existent_function")
