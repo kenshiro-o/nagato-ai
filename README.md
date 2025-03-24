@@ -257,6 +257,8 @@ class HumanConfirmInputTool(AbstractTool):
 
 Nagato supports creating complex agent systems using a directed acyclic graph (DAG) approach. This allows you to create powerful workflows by connecting different tool nodes and agent nodes.
 
+For a comprehensive guide on using graphs in Nagato, including detailed examples and best practices, check out the [Graph Package Documentation](nagatoai_core/graph/README.md).
+
 ### Graph Core Concepts
 
 - **Graph**: The main structure that connects all nodes and manages execution flow

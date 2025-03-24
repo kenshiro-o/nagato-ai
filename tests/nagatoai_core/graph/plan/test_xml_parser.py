@@ -17,11 +17,12 @@ from nagatoai_core.graph.agent_node import AgentNode
 from nagatoai_core.graph.conditional_flow import ConditionalFlow
 from nagatoai_core.graph.graph import Graph
 from nagatoai_core.graph.parallel_flow import ParallelFlow
-from nagatoai_core.graph.plan.plan import Plan
 from nagatoai_core.graph.plan.xml_parser import XMLPlanParser
 from nagatoai_core.graph.sequential_flow import SequentialFlow
 from nagatoai_core.graph.tool_node_with_params_conversion import ToolNodeWithParamsConversion
+from nagatoai_core.graph.transformer_flow import TransformerFlow
 from nagatoai_core.graph.types import ComparisonType, PredicateJoinType
+from nagatoai_core.graph.unfold_flow import UnfoldFlow
 from nagatoai_core.tool.lib.human.input import HumanInputTool
 from nagatoai_core.tool.lib.readwise.book_finder import ReadwiseDocumentFinderTool
 from nagatoai_core.tool.provider.openai import OpenAIToolProvider
@@ -73,6 +74,13 @@ def agents_xml():
 def mock_agent():
     """Return a mock Agent instance."""
     mock = Mock(spec=Agent)
+    return mock
+
+
+@pytest.fixture
+def mock_openai_agent():
+    """Return a mock OpenAIAgent instance."""
+    mock = Mock(spec=OpenAIAgent)
     return mock
 
 
@@ -1786,3 +1794,299 @@ def test_get_comparison_function_attribute_error(mock_import_module, parser):
     # Execute and verify
     with pytest.raises(ValueError, match="Failed to import comparison function"):
         parser._get_comparison_function("test_module", "non_existent_function")
+
+
+@pytest.fixture
+def transformer_flow_xml():
+    """Return XML for a basic transformer flow with a sequential flow as flow_param."""
+    xml = """
+    <transformer_flow id="transformer_flow_1" name="Test Transformer Flow">
+        <flow_param>
+            <sequential_flow id="inner_flow" name="Inner Flow">
+                <nodes>
+                    <agent_node id="agent_node1" name="Agent Node">
+                        <agent name="test_agent"/>
+                    </agent_node>
+                </nodes>
+            </sequential_flow>
+        </flow_param>
+        <functor>
+            <module>nagatoai_core.graph.transformer_flow</module>
+            <function>combine_inputs_with_flow</function>
+        </functor>
+    </transformer_flow>
+    """
+    return BeautifulSoup(xml, "xml").find("transformer_flow")
+
+
+@pytest.fixture
+def transformer_flow_without_id_xml():
+    """Return XML for a transformer flow without an ID."""
+    xml = """
+    <transformer_flow name="Test Transformer Flow">
+        <flow_param>
+            <sequential_flow id="inner_flow" name="Inner Flow">
+                <nodes>
+                    <agent_node id="agent_node1" name="Agent Node">
+                        <agent name="test_agent"/>
+                    </agent_node>
+                </nodes>
+            </sequential_flow>
+        </flow_param>
+        <functor>
+            <module>nagatoai_core.graph.transformer_flow</module>
+            <function>combine_inputs_with_flow</function>
+        </functor>
+    </transformer_flow>
+    """
+    return BeautifulSoup(xml, "xml").find("transformer_flow")
+
+
+@pytest.fixture
+def transformer_flow_without_flow_param_xml():
+    """Return XML for a transformer flow without a flow_param."""
+    xml = """
+    <transformer_flow id="transformer_flow_1" name="Test Transformer Flow">
+        <functor>
+            <module>nagatoai_core.graph.transformer_flow</module>
+            <function>combine_inputs_with_flow</function>
+        </functor>
+    </transformer_flow>
+    """
+    return BeautifulSoup(xml, "xml").find("transformer_flow")
+
+
+@pytest.fixture
+def transformer_flow_without_functor_xml():
+    """Return XML for a transformer flow without a functor."""
+    xml = """
+    <transformer_flow id="transformer_flow_1" name="Test Transformer Flow">
+        <flow_param>
+            <sequential_flow id="inner_flow" name="Inner Flow">
+                <nodes>
+                    <agent_node id="agent_node1" name="Agent Node">
+                        <agent name="test_agent"/>
+                    </agent_node>
+                </nodes>
+            </sequential_flow>
+        </flow_param>
+    </transformer_flow>
+    """
+    return BeautifulSoup(xml, "xml").find("transformer_flow")
+
+
+@pytest.fixture
+def transformer_flow_with_invalid_functor_xml():
+    """Return XML for a transformer flow with an invalid functor."""
+    xml = """
+    <transformer_flow id="transformer_flow_1" name="Test Transformer Flow">
+        <flow_param>
+            <sequential_flow id="inner_flow" name="Inner Flow">
+                <nodes>
+                    <agent_node id="agent_node1" name="Agent Node">
+                        <agent name="test_agent"/>
+                    </agent_node>
+                </nodes>
+            </sequential_flow>
+        </flow_param>
+        <functor>
+            <module>non_existent_module</module>
+            <function>non_existent_function</function>
+        </functor>
+    </transformer_flow>
+    """
+    return BeautifulSoup(xml, "xml").find("transformer_flow")
+
+
+@patch("nagatoai_core.graph.plan.xml_parser.get_agent_tool_provider")
+def test_parse_transformer_flow_valid(mock_get_agent_tool_provider, parser, transformer_flow_xml, mock_agent):
+    """Test parsing a valid transformer flow."""
+    # Setup
+    agents = {"test_agent": mock_agent}
+    output_schemas = {}
+    tool_registry = Mock()
+
+    # Mock the tool provider class
+    mock_get_agent_tool_provider.return_value = OpenAIToolProvider
+
+    # Execute
+    result = parser.parse_transformer_flow(transformer_flow_xml, agents, output_schemas, tool_registry)
+
+    # Verify
+    assert result.id == "transformer_flow_1"
+    assert result.name == "Test Transformer Flow"
+    assert result.flow_param is not None
+    assert result.flow_param.id == "inner_flow"
+    assert result.functor is not None
+    assert result.functor.__name__ == "combine_inputs_with_flow"
+
+
+def test_parse_transformer_flow_without_id(parser, transformer_flow_without_id_xml):
+    """Test parsing a transformer flow without an ID throws an error."""
+    with pytest.raises(ValueError, match="Missing required attribute 'id' in transformer_flow"):
+        parser.parse_transformer_flow(transformer_flow_without_id_xml, {}, {}, None)
+
+
+def test_parse_transformer_flow_without_flow_param(parser, transformer_flow_without_flow_param_xml):
+    """Test parsing a transformer flow without a flow_param throws an error."""
+    with pytest.raises(ValueError, match="Missing required element 'flow_param' in transformer_flow"):
+        parser.parse_transformer_flow(transformer_flow_without_flow_param_xml, {}, {}, None)
+
+
+def test_parse_transformer_flow_without_functor(parser, transformer_flow_without_functor_xml, mock_openai_agent):
+    """Test parsing a transformer flow without a functor throws an error."""
+    # Setup
+    agents = {"test_agent": mock_openai_agent}
+
+    with pytest.raises(ValueError, match="Missing required element 'functor' in transformer_flow"):
+        parser.parse_transformer_flow(transformer_flow_without_functor_xml, agents, {}, None)
+
+
+@patch("nagatoai_core.graph.plan.xml_parser.importlib.import_module")
+def test_parse_transformer_flow_with_invalid_functor(
+    mock_import_module, parser, transformer_flow_with_invalid_functor_xml, mock_openai_agent
+):
+    """Test parsing a transformer flow with an invalid functor throws an error."""
+    # Setup
+    agents = {"test_agent": mock_openai_agent}
+    mock_import_module.side_effect = ImportError("Module not found")
+
+    # Execute and verify
+    with pytest.raises(ValueError, match="Failed to import functor"):
+        parser.parse_transformer_flow(transformer_flow_with_invalid_functor_xml, agents, {}, None)
+
+
+@patch("nagatoai_core.graph.plan.xml_parser.get_agent_tool_provider")
+def test_parse_nodes_with_transformer_flow(mock_get_agent_tool_provider, parser, mock_agent):
+    """Test parsing nodes that include a transformer flow."""
+    # Setup
+    agents = {"test_agent": mock_agent}
+    output_schemas = {}
+    mock_get_agent_tool_provider.return_value = OpenAIToolProvider
+
+    nodes_xml = BeautifulSoup(
+        """
+        <nodes>
+            <transformer_flow id="transformer_flow_1" name="Test Transformer Flow">
+                <flow_param>
+                    <sequential_flow id="inner_flow" name="Inner Flow">
+                        <nodes>
+                            <agent_node id="agent_node1" name="Agent Node">
+                                <agent name="test_agent"/>
+                            </agent_node>
+                        </nodes>
+                    </sequential_flow>
+                </flow_param>
+                <functor>
+                    <module>nagatoai_core.graph.transformer_flow</module>
+                    <function>combine_inputs_with_flow</function>
+                </functor>
+            </transformer_flow>
+        </nodes>
+        """,
+        "xml",
+    )
+
+    # Execute
+    result = parser.parse_nodes(nodes_xml, agents, output_schemas)
+
+    # Verify
+    assert "transformer_flow_1" in result
+    assert isinstance(result["transformer_flow_1"], TransformerFlow)
+    assert result["transformer_flow_1"].flow_param.id == "inner_flow"
+    assert result["transformer_flow_1"].functor.__name__ == "combine_inputs_with_flow"
+
+
+@pytest.fixture
+def unfold_flow_xml():
+    """Return XML for a basic unfold flow with default settings."""
+    xml = """
+    <unfold_flow id="unfold_flow_1" name="Test Unfold Flow">
+    </unfold_flow>
+    """
+    return BeautifulSoup(xml, "xml").find("unfold_flow")
+
+
+@pytest.fixture
+def unfold_flow_with_options_xml():
+    """Return XML for an unfold flow with custom settings."""
+    xml = """
+    <unfold_flow id="unfold_flow_1" name="Test Unfold Flow">
+        <preserve_metadata>false</preserve_metadata>
+        <skip_empty_lists>true</skip_empty_lists>
+        <wrap_non_list_inputs>false</wrap_non_list_inputs>
+    </unfold_flow>
+    """
+    return BeautifulSoup(xml, "xml").find("unfold_flow")
+
+
+@pytest.fixture
+def unfold_flow_without_id_xml():
+    """Return XML for an unfold flow without an ID."""
+    xml = """
+    <unfold_flow name="Test Unfold Flow">
+        <preserve_metadata>false</preserve_metadata>
+        <skip_empty_lists>true</skip_empty_lists>
+        <wrap_non_list_inputs>false</wrap_non_list_inputs>
+    </unfold_flow>
+    """
+    return BeautifulSoup(xml, "xml").find("unfold_flow")
+
+
+def test_parse_unfold_flow_valid(parser, unfold_flow_xml):
+    """Test parsing a valid unfold flow with default settings."""
+    # Execute
+    result = parser.parse_unfold_flow(unfold_flow_xml, {}, {}, None)
+
+    # Verify
+    assert result.id == "unfold_flow_1"
+    assert result.name == "Test Unfold Flow"
+    assert result.preserve_metadata is True  # Default value
+    assert result.skip_empty_lists is False  # Default value
+    assert result.wrap_non_list_inputs is True  # Default value
+
+
+def test_parse_unfold_flow_with_options(parser, unfold_flow_with_options_xml):
+    """Test parsing an unfold flow with custom settings."""
+    # Execute
+    result = parser.parse_unfold_flow(unfold_flow_with_options_xml, {}, {}, None)
+
+    # Verify
+    assert result.id == "unfold_flow_1"
+    assert result.name == "Test Unfold Flow"
+    assert result.preserve_metadata is False
+    assert result.skip_empty_lists is True
+    assert result.wrap_non_list_inputs is False
+
+
+def test_parse_unfold_flow_without_id(parser, unfold_flow_without_id_xml):
+    """Test parsing an unfold flow without an ID throws an error."""
+    with pytest.raises(ValueError, match="Missing required attribute 'id' in unfold_flow"):
+        parser.parse_unfold_flow(unfold_flow_without_id_xml, {}, {}, None)
+
+
+def test_parse_nodes_with_unfold_flow(parser):
+    """Test parsing nodes that include an unfold flow."""
+    # Setup
+    nodes_xml = BeautifulSoup(
+        """
+        <nodes>
+            <unfold_flow id="unfold_flow_1" name="Test Unfold Flow">
+                <preserve_metadata>false</preserve_metadata>
+                <skip_empty_lists>true</skip_empty_lists>
+                <wrap_non_list_inputs>false</wrap_non_list_inputs>
+            </unfold_flow>
+        </nodes>
+        """,
+        "xml",
+    )
+
+    # Execute
+    result = parser.parse_nodes(nodes_xml, {}, {})
+
+    # Verify
+    assert "unfold_flow_1" in result
+    assert isinstance(result["unfold_flow_1"], UnfoldFlow)
+    assert result["unfold_flow_1"].preserve_metadata is False
+    assert result["unfold_flow_1"].skip_empty_lists is True
+    assert result["unfold_flow_1"].wrap_non_list_inputs is False

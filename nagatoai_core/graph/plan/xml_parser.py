@@ -26,7 +26,9 @@ from nagatoai_core.graph.plan.base_model_generator import BaseModelGenerator
 from nagatoai_core.graph.plan.plan import Plan
 from nagatoai_core.graph.sequential_flow import SequentialFlow
 from nagatoai_core.graph.tool_node_with_params_conversion import ToolNodeWithParamsConversion
+from nagatoai_core.graph.transformer_flow import TransformerFlow
 from nagatoai_core.graph.types import ComparisonType, PredicateJoinType
+from nagatoai_core.graph.unfold_flow import UnfoldFlow
 from nagatoai_core.prompt.template.prompt_template import PromptTemplate
 from nagatoai_core.tool.lib.audio.afplay import AfPlayTool
 from nagatoai_core.tool.lib.audio.stt.assemblyai import AssemblyAITranscriptionTool
@@ -50,6 +52,18 @@ from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDown
 from nagatoai_core.tool.lib.web.page_scraper import WebPageScraperTool
 from nagatoai_core.tool.lib.web.serper_search import SerperSearchTool
 from nagatoai_core.tool.registry import ToolRegistry
+
+AVAILABLE_FLOW_TYPES = [
+    "sequential_flow",
+    "parallel_flow",
+    "conditional_flow",
+    "transformer_flow",
+    "unfold_flow",
+]
+
+AVAILABLE_BASE_NODE_TYPES = ["agent_node", "tool_node_with_params_conversion"]
+
+AVAILABLE_ALL_NODE_TYPES = AVAILABLE_BASE_NODE_TYPES + AVAILABLE_FLOW_TYPES
 
 
 class XMLPlanParser:
@@ -313,7 +327,15 @@ class XMLPlanParser:
             node = self.parse_conditional_flow(conditional_flow, agents, output_schemas, tool_registry)
             nodes[node.id] = node
 
-        # Add other node types here when implemented
+        # Parse transformer_flow nodes
+        for transformer_flow in nodes_node.find_all("transformer_flow"):
+            node = self.parse_transformer_flow(transformer_flow, agents, output_schemas, tool_registry)
+            nodes[node.id] = node
+
+        # Parse unfold_flow nodes
+        for unfold_flow in nodes_node.find_all("unfold_flow"):
+            node = self.parse_unfold_flow(unfold_flow, agents, output_schemas, tool_registry)
+            nodes[node.id] = node
 
         return nodes
 
@@ -581,9 +603,7 @@ class XMLPlanParser:
         if nodes_elem:
             nested_nodes_dict = self.parse_nodes(nodes_elem, agents, output_schemas)
             # Convert the nodes dictionary to a list while preserving the order defined in XML
-            for node_elem in nodes_elem.find_all(
-                ["agent_node", "tool_node_with_params_conversion", "sequential_flow", "parallel_flow"]
-            ):
+            for node_elem in nodes_elem.find_all(AVAILABLE_ALL_NODE_TYPES, recursive=False):
                 node_id = node_elem.get("id")
                 if node_id in nested_nodes_dict:
                     nested_nodes.append(nested_nodes_dict[node_id])
@@ -660,16 +680,7 @@ class XMLPlanParser:
         positive_path_elem = conditional_flow_bs.find("positive_path", recursive=False)
         if positive_path_elem:
             # Check for each possible node type in positive_path
-            child_nodes = positive_path_elem.find_all(
-                [
-                    "agent_node",
-                    "tool_node_with_params_conversion",
-                    "sequential_flow",
-                    "parallel_flow",
-                    "conditional_flow",
-                ],
-                recursive=False,
-            )
+            child_nodes = positive_path_elem.find_all(AVAILABLE_ALL_NODE_TYPES, recursive=False)
             if child_nodes:
                 # Parse the first child node
                 node_elem = child_nodes[0]
@@ -685,22 +696,17 @@ class XMLPlanParser:
                     positive_path = self.parse_parallel_flow(node_elem, agents, output_schemas, tool_registry)
                 elif tag_name == "conditional_flow":
                     positive_path = self.parse_conditional_flow(node_elem, agents, output_schemas, tool_registry)
+                elif tag_name == "unfold_flow":
+                    positive_path = self.parse_unfold_flow(node_elem, agents, output_schemas, tool_registry)
+                else:
+                    raise ValueError(f"Invalid node type '{tag_name}' in positive_path of conditional_flow {flow_id}")
 
         # Parse negative path (similar to positive path)
         negative_path = None
         negative_path_elem = conditional_flow_bs.find("negative_path", recursive=False)
         if negative_path_elem:
             # Similar implementation as positive_path
-            child_nodes = negative_path_elem.find_all(
-                [
-                    "agent_node",
-                    "tool_node_with_params_conversion",
-                    "sequential_flow",
-                    "parallel_flow",
-                    "conditional_flow",
-                ],
-                recursive=False,
-            )
+            child_nodes = negative_path_elem.find_all(AVAILABLE_ALL_NODE_TYPES, recursive=False)
             if child_nodes:
                 # Parse the first child node
                 node_elem = child_nodes[0]
@@ -716,6 +722,10 @@ class XMLPlanParser:
                     negative_path = self.parse_parallel_flow(node_elem, agents, output_schemas, tool_registry)
                 elif tag_name == "conditional_flow":
                     negative_path = self.parse_conditional_flow(node_elem, agents, output_schemas, tool_registry)
+                elif tag_name == "unfold_flow":
+                    negative_path = self.parse_unfold_flow(node_elem, agents, output_schemas, tool_registry)
+                else:
+                    raise ValueError(f"Invalid node type '{tag_name}' in negative_path of conditional_flow {flow_id}")
 
         # Create and return the ConditionalFlow
         return ConditionalFlow(
@@ -730,6 +740,134 @@ class XMLPlanParser:
             predicate_join_type=predicate_join_type,
             positive_path=positive_path,
             negative_path=negative_path,
+        )
+
+    def parse_transformer_flow(
+        self,
+        transformer_flow_bs: BeautifulSoup,
+        agents: Dict[str, Agent],
+        output_schemas: Dict[str, Type[BaseModel]],
+        tool_registry: ToolRegistry,
+    ) -> TransformerFlow:
+        """Parse a transformer flow node.
+
+        Args:
+            transformer_flow_bs: Tag containing transformer flow node.
+            agents: Agents to use when parsing nodes.
+            output_schemas: Output schemas to use when parsing nodes.
+            tool_registry: Tool registry to use when parsing nodes.
+
+        Returns:
+            TransformerFlow node.
+
+        Raises:
+            ValueError: If required attributes or elements are missing.
+        """
+        # Extract required attributes
+        flow_id = transformer_flow_bs.get("id")
+        if not flow_id:
+            raise ValueError("Missing required attribute 'id' in transformer_flow")
+
+        flow_name = transformer_flow_bs.get("name", flow_id)
+
+        # Parse flow_param
+        flow_param_elem = transformer_flow_bs.find("flow_param", recursive=False)
+        if not flow_param_elem:
+            raise ValueError("Missing required element 'flow_param' in transformer_flow")
+
+        # The flow_param can contain any valid flow type
+        flow_param = None
+        for flow_type in AVAILABLE_FLOW_TYPES:
+            flow_elem = flow_param_elem.find(flow_type, recursive=False)
+            if flow_elem:
+                if flow_type == "sequential_flow":
+                    flow_param = self.parse_sequential_flow(flow_elem, agents, output_schemas, tool_registry)
+                elif flow_type == "parallel_flow":
+                    flow_param = self.parse_parallel_flow(flow_elem, agents, output_schemas, tool_registry)
+                elif flow_type == "conditional_flow":
+                    flow_param = self.parse_conditional_flow(flow_elem, agents, output_schemas, tool_registry)
+                elif flow_type == "transformer_flow":
+                    flow_param = self.parse_transformer_flow(flow_elem, agents, output_schemas, tool_registry)
+                elif flow_type == "unfold_flow":
+                    flow_param = self.parse_unfold_flow(flow_elem, agents, output_schemas, tool_registry)
+                break
+
+        if not flow_param:
+            raise ValueError("No valid flow type found in flow_param")
+
+        # Parse functor
+        functor_elem = transformer_flow_bs.find("functor")
+        if not functor_elem:
+            raise ValueError("Missing required element 'functor' in transformer_flow")
+
+        module_name = self._get_node_text(functor_elem, "module")
+        function_name = self._get_node_text(functor_elem, "function")
+
+        try:
+            module = importlib.import_module(module_name)
+            functor = getattr(module, function_name)
+        except (ImportError, AttributeError) as e:
+            raise ValueError(f"Failed to import functor {function_name} from {module_name}: {str(e)}")
+
+        # Create and return the TransformerFlow
+        return TransformerFlow(
+            id=flow_id,
+            name=flow_name,
+            flow_param=flow_param,
+            functor=functor,
+        )
+
+    def parse_unfold_flow(
+        self,
+        unfold_flow_bs: BeautifulSoup,
+        agents: Dict[str, Agent],
+        output_schemas: Dict[str, Type[BaseModel]],
+        tool_registry: ToolRegistry,
+    ) -> UnfoldFlow:
+        """Parse an unfold flow node.
+
+        Args:
+            unfold_flow_bs: Tag containing unfold flow node.
+            agents: Agents to use when parsing nodes.
+            output_schemas: Output schemas to use when parsing nodes.
+            tool_registry: Tool registry to use when parsing nodes.
+
+        Returns:
+            UnfoldFlow node.
+
+        Raises:
+            ValueError: If required attributes are missing.
+        """
+        # Extract required attributes
+        flow_id = unfold_flow_bs.get("id")
+        if not flow_id:
+            raise ValueError("Missing required attribute 'id' in unfold_flow")
+
+        flow_name = unfold_flow_bs.get("name", flow_id)
+
+        # Parse optional boolean parameters with defaults
+        preserve_metadata = True
+        preserve_metadata_elem = unfold_flow_bs.find("preserve_metadata")
+        if preserve_metadata_elem and preserve_metadata_elem.text.strip().lower() == "false":
+            preserve_metadata = False
+
+        skip_empty_lists = False
+        skip_empty_lists_elem = unfold_flow_bs.find("skip_empty_lists")
+        if skip_empty_lists_elem and skip_empty_lists_elem.text.strip().lower() == "true":
+            skip_empty_lists = True
+
+        wrap_non_list_inputs = True
+        wrap_non_list_inputs_elem = unfold_flow_bs.find("wrap_non_list_inputs")
+        if wrap_non_list_inputs_elem and wrap_non_list_inputs_elem.text.strip().lower() == "false":
+            wrap_non_list_inputs = False
+
+        # Create and return the UnfoldFlow
+        return UnfoldFlow(
+            id=flow_id,
+            name=flow_name,
+            preserve_metadata=preserve_metadata,
+            skip_empty_lists=skip_empty_lists,
+            wrap_non_list_inputs=wrap_non_list_inputs,
         )
 
     def parse_graph(self, graph_node: BeautifulSoup, node_dict: Dict[str, AbstractNode]) -> Graph:
