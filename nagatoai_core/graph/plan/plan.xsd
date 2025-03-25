@@ -19,6 +19,8 @@
                 <xs:element name="nodes" type="nodesType"/>
                 <xs:element name="graph" type="graphType"/>
             </xs:sequence>
+            <xs:attribute name="id" type="xs:string" use="optional"/>
+            <xs:attribute name="name" type="xs:string" use="optional"/>
         </xs:complexType>
     </xs:element>
 
@@ -67,15 +69,15 @@
 
     <!-- Nodes section -->
     <xs:complexType name="nodesType">
-        <xs:sequence>
-            <xs:element name="agent_node" type="agentNodeType" minOccurs="0" maxOccurs="unbounded"/>
-            <xs:element name="tool_node_with_params_conversion" type="toolNodeWithParamsConversionType" minOccurs="0" maxOccurs="unbounded"/>
-            <xs:element name="sequential_flow" type="sequentialFlowType" minOccurs="0" maxOccurs="unbounded"/>
-            <xs:element name="parallel_flow" type="parallelFlowType" minOccurs="0" maxOccurs="unbounded"/>
-            <xs:element name="conditional_flow" type="conditionalFlowType" minOccurs="0" maxOccurs="unbounded"/>
-            <xs:element name="transformer_flow" type="transformerFlowType" minOccurs="0" maxOccurs="unbounded"/>
-            <xs:element name="unfold_flow" type="unfoldFlowType" minOccurs="0" maxOccurs="unbounded"/>
-        </xs:sequence>
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="agent_node" type="agentNodeType"/>
+            <xs:element name="tool_node_with_params_conversion" type="toolNodeWithParamsConversionType"/>
+            <xs:element name="sequential_flow" type="sequentialFlowType"/>
+            <xs:element name="parallel_flow" type="parallelFlowType"/>
+            <xs:element name="conditional_flow" type="conditionalFlowType"/>
+            <xs:element name="transformer_flow" type="transformerFlowType"/>
+            <xs:element name="unfold_flow" type="unfoldFlowType"/>
+        </xs:choice>
     </xs:complexType>
 
     <!-- Agent Node -->
@@ -168,7 +170,7 @@
 
     <xs:complexType name="toolsType">
         <xs:sequence>
-            <xs:element name="tool" type="toolReferenceType" maxOccurs="unbounded"/>
+            <xs:element name="tool" type="toolReferenceType" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
     </xs:complexType>
 
