@@ -157,7 +157,7 @@ class XMLPlanValidator:
                 errors.append(f"Node references non-existent output schema: {schema_name}")
 
         # Validate JSONSchema content
-        for schema_elem in doc.xpath(".//ns:output_schemas/ns:output_schema/ns:schema", namespaces=nsmap):
+        for schema_elem in doc.xpath(".//ns:output_schemas/ns:output_schema", namespaces=nsmap):
             json_str = schema_elem.text
             if json_str:
                 try:

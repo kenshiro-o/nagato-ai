@@ -1,6 +1,6 @@
 # Standard Library
-from typing import List, Optional
 import logging
+from typing import List, Optional
 
 # Third Party
 from pydantic import BaseModel, ConfigDict
@@ -10,11 +10,19 @@ from nagatoai_core.agent.agent import Agent
 from nagatoai_core.graph.plan.plan import Plan
 from nagatoai_core.graph.plan.validator import XMLPlanValidator
 from nagatoai_core.graph.plan.xml_parser import XMLPlanParser
+from nagatoai_core.graph.planner.objective import Objective
 from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
-from nagatoai_core.graph.planner.objective import Objective
 
-MODELS_AVAILABLE = ["o1", "o3-mini", "o3-mini-high", "claude-3-7-sonnet-20250219", "gpt-4o-mini", "gpt-4o"]
+MODELS_AVAILABLE = [
+    "o1",
+    "o3-mini",
+    "o3-mini-high",
+    "claude-3-7-sonnet-20250219",
+    "gpt-4o-mini",
+    "gpt-4o",
+    "gemini-2.0-flash",
+]
 
 
 class PlannerAgent(BaseModel):
@@ -94,8 +102,7 @@ class PlannerAgent(BaseModel):
 
         models_available_xml_str = f"<models_available>{models_available_xml_str}</models_available>"
 
-        # TODO - read the schema plan.xsd file and insert it into the prompt
-        # plan.xsd lives in the nagatoai_core/graph/plan/plan.xsd file
+        # Read the schema plan.xsd file and insert it into the prompt
         xsd_content = ""
         with open("nagatoai_core/graph/plan/plan.xsd", "r") as file:
             xsd_content = file.read()
@@ -130,10 +137,21 @@ class PlannerAgent(BaseModel):
 
         {tools_available_xml_str}
 
-        Only use the models available when specifying the model to use for an agent.
+        Here is more information about how the building blocks for a plan work:
+        - agent_node: Executes AI agents with configurable parameters
+        - tool_node_with_params_conversion: Executes tools with parameter conversion capabilities
+        - Flow Nodes are special nodes that manage subgraphs:
+            - sequential_flow: Executes nodes in sequence
+            - parallel_flow: Executes nodes in parallel
+            - conditional_flow: Executes nodes based on conditions
+            - transformer_flow: Transforms data using custom functions
+            - unfold_flow: Expands lists into individual items
+
         Leverage the tools available if it makes sense to have nodes that use tools.
         The milestones represent potential steps needed to complete the objective. However, they may not be all needed.
-        Inside the <graph> tag, make sure that we only have edges that connect top-level nodes to other top-level nodes (i.e. no edges fron sub-nodes contained within a sequential or parallel flow).
+        IMPORTANT: Only use the models available when specifying the model to use for an agent.
+        IMPORTANT: For the node tool_node_with_params_conversion, make sure that the agent used is either gemini-2.0-flash, or claude-3-7-sonnet-20250219 .
+        IMPORTANT: Inside the <graph> tag, make sure that we only have edges that connect top-level nodes to other top-level nodes (i.e. no edges fron sub-nodes contained within a sequential or parallel flow).
         The XML plan should follow this structure:
         ```xml
         {xsd_content}
@@ -143,12 +161,12 @@ class PlannerAgent(BaseModel):
         Make sure to add the namespace to the plan tag.
         """
 
-        print(f"Plan prompt: {plan_prompt}")
+        logging.debug(f"Plan prompt: {plan_prompt}")
 
         exchange = self.agent.chat(None, plan_prompt, tools, temperature, max_tokens)
         xml_plan = exchange.agent_response.content
 
-        logging.info(f"*** XML Plan from agent: {xml_plan}")
+        logging.debug(f"XML Plan generated from agent: {xml_plan}")
 
         # Extract the XML content if it's wrapped in code blocks
         if "```xml" in xml_plan and "```" in xml_plan:

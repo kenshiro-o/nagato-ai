@@ -508,13 +508,16 @@ class XMLPlanParser:
         if clear_memory_elem and clear_memory_elem.text.strip().lower() == "false":
             clear_memory = False
 
+        # Make sure to instantiate the tool
+        tool_instance = tool()
+
         # Create tool provider
         tool_provider_class = get_agent_tool_provider(agent)
         tool_provider_instance = tool_provider_class(
-            tool=tool,
-            name=tool_name,
-            description=tool.description,
-            args_schema=tool.args_schema,
+            tool=tool_instance,
+            name=tool_instance.name,
+            description=tool_instance.description,
+            args_schema=tool_instance.args_schema,
         )
 
         # Create and return the ToolNodeWithParamsConversion

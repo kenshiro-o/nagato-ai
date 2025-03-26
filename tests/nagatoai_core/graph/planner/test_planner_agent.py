@@ -1,8 +1,8 @@
 # Standard Library
-import os
-from unittest.mock import MagicMock, patch
 import logging
+import os
 from typing import List
+from unittest.mock import MagicMock, patch
 
 # Third Party
 import pytest
@@ -10,20 +10,23 @@ from bs4 import BeautifulSoup
 
 # Nagato AI
 from nagatoai_core.agent.factory import create_agent, get_agent_tool_provider
-from nagatoai_core.graph.planner.planner_agent import PlannerAgent
-from nagatoai_core.graph.planner.objective import Objective
-from nagatoai_core.mission.task import Task
+from nagatoai_core.graph.graph import Graph
+from nagatoai_core.graph.plan.plan import Plan
 from nagatoai_core.graph.plan.validator import XMLPlanValidator
-from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
-from nagatoai_core.tool.provider.openai import OpenAIToolProvider
-from nagatoai_core.tool.lib.readwise.book_finder import ReadwiseDocumentFinderTool
-from nagatoai_core.tool.lib.readwise.highlights_lister import ReadwiseHighightsListerTool
-from nagatoai_core.tool.lib.readwise.book_highlights_lister import ReadwiseBookHighlightsListerTool
+from nagatoai_core.graph.planner.objective import Objective
+from nagatoai_core.graph.planner.planner_agent import PlannerAgent
+from nagatoai_core.graph.types import NodeResult
+from nagatoai_core.mission.task import Task
 from nagatoai_core.tool.lib.human.confirm import HumanConfirmInputTool
 from nagatoai_core.tool.lib.human.input import HumanInputTool
+from nagatoai_core.tool.lib.readwise.book_finder import ReadwiseDocumentFinderTool
+from nagatoai_core.tool.lib.readwise.book_highlights_lister import ReadwiseBookHighlightsListerTool
+from nagatoai_core.tool.lib.readwise.highlights_lister import ReadwiseHighightsListerTool
+from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDownloadTool
 from nagatoai_core.tool.lib.web.page_scraper import WebPageScraperTool
 from nagatoai_core.tool.lib.web.serper_search import SerperSearchTool
-from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDownloadTool
+from nagatoai_core.tool.provider.abstract_tool_provider import AbstractToolProvider
+from nagatoai_core.tool.provider.openai import OpenAIToolProvider
 
 
 @pytest.fixture
@@ -124,10 +127,17 @@ def test_generate_plan_xml_youtube_video_download(planner_agent: PlannerAgent, t
     assert tool.get("name") == "youtube_video_download"
 
 
-def test_generate_plan_xml_readwise_book_highlights_summeriser(
+def test_generate_and_parse_plan_xml_readwise_book_highlights_summariser_with_graph_integration_test(
     planner_agent: PlannerAgent, tools: List[AbstractToolProvider]
 ):
-    """Test generating an XML plan from an objective."""
+    """Test generating an XML plan a user input, then parsing the XML plan into a Plan object,
+    then compiling the Plan object into a Graph, then running the Graph and asserting the results.
+    An objective is generated from the user input, and the plan is generated from the objective.
+    """
+    # Skip the test if READWISE_API_KEY is not set
+    if not os.environ.get("READWISE_API_KEY"):
+        pytest.skip("No Readwise API key found, skipping test")
+
     # Test
     prompt = (
         "Write me a 500-word summary of the article 'Building Effective Agents' that I have highlighted on Readwise"
@@ -145,7 +155,29 @@ def test_generate_plan_xml_readwise_book_highlights_summeriser(
     )
 
     xml_plan = planner_agent.generate_plan_xml(prompt, objective, tools)
-    logging.info(f"*** XML Plan: {xml_plan}")
+    logging.info(f"XML Plan: {xml_plan}")
 
     assert isinstance(xml_plan, str)
     assert len(xml_plan) > 0
+
+    # Parse the XML plan
+    plan = planner_agent.parse_plan_to_object(xml_plan)
+
+    assert isinstance(plan, Plan)
+    assert len(plan.agents) > 0
+
+    graph = plan.graph
+    assert isinstance(graph, Graph)
+
+    # Now try to compile the graph
+    graph.compile()
+    assert graph.compiled
+    assert len(graph.execution_order) > 0
+
+    # Now create an input NodeResult and then run the graph
+    input_node_result = NodeResult(node_id="input_node", result={"document_name": "Building effective agents"})
+    results = graph.run([input_node_result])
+    assert len(results) > 0
+    assert results[0].result is not None
+
+    logging.info(f"Results from running the graph: {results}")

@@ -49,23 +49,24 @@
     </xs:complexType>
 
     <xs:complexType name="outputSchemaType">
-        <xs:sequence>
-            <xs:element name="schema">
-                <xs:annotation>
-                    <xs:documentation>
-                        The content of this element should be a valid JSONSchema string.
-                        Example: {"type": "object", "properties": {"name": {"type": "string"}}}
-                    </xs:documentation>
-                </xs:annotation>
-                <xs:simpleType>
-                    <xs:restriction base="xs:string">
-                        <xs:pattern value="\{.*\}"/>
-                    </xs:restriction>
-                </xs:simpleType>
-            </xs:element>
-        </xs:sequence>
-        <xs:attribute name="name" type="xs:string" use="required"/>
+        <xs:annotation>
+            <xs:documentation>
+                The content of this element should be a valid JSONSchema string.
+                Example: {"type": "object", "properties": {"name": {"type": "string"}}}
+            </xs:documentation>
+        </xs:annotation>
+        <xs:simpleContent>
+            <xs:extension base="schemaContentType">
+                <xs:attribute name="name" type="xs:string" use="required"/>
+            </xs:extension>
+        </xs:simpleContent>
     </xs:complexType>
+
+    <xs:simpleType name="schemaContentType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="\s*\{.*\}\s*"/>
+        </xs:restriction>
+    </xs:simpleType>
 
     <!-- Nodes section -->
     <xs:complexType name="nodesType">

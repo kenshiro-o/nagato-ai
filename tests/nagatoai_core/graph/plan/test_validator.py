@@ -24,7 +24,7 @@ def test_valid_plan():
         </agents>
         <output_schemas>
             <output_schema name="test_schema">
-                <schema>{"type": "object"}</schema>
+                {"type": "object"}
             </output_schema>
         </output_schemas>
         <nodes>
@@ -207,7 +207,7 @@ def test_invalid_json_schema():
         </agents>
         <output_schemas>
             <output_schema name="test_schema">
-                <schema>{"type": "invalid_type", "properties": 123}</schema>
+                {"type": "invalid_type", "properties": 123}
             </output_schema>
         </output_schemas>
         <nodes>
@@ -246,7 +246,7 @@ def test_non_json_schema():
         </agents>
         <output_schemas>
             <output_schema name="test_schema">
-                <schema>{"type": "not-a-valid-type", "required": 123}</schema>
+                {"type": "not-a-valid-type", "required": 123}
             </output_schema>
         </output_schemas>
         <nodes>
@@ -283,7 +283,7 @@ def test_valid_json_schema():
         </agents>
         <output_schemas>
             <output_schema name="test_schema">
-                <schema>{"type":"object","properties":{"name":{"type":"string"},"age":{"type":"integer"},"address":{"type":"object","properties":{"street":{"type":"string"},"city":{"type":"string"}},"required":["street","city"]}},"required":["name","age"]}</schema>
+                {"type":"object","properties":{"name":{"type":"string"},"age":{"type":"integer"},"address":{"type":"object","properties":{"street":{"type":"string"},"city":{"type":"string"}},"required":["street","city"]}},"required":["name","age"]}
             </output_schema>
         </output_schemas>
         <nodes>
@@ -302,4 +302,40 @@ def test_valid_json_schema():
     validator = XMLPlanValidator()
     is_valid, errors = validator.validate_plan(xml_string)
     assert is_valid
+    assert not errors
+
+
+def test_output_schema_direct_json():
+    """Test that output_schema elements can contain JSON schema directly."""
+    xml_string = """
+    <plan xmlns="http://nagatoai.com/schema/plan">
+        <agents>
+            <agent name="test_agent">
+                <model>test-model</model>
+                <role>Test Role</role>
+                <role_description>Test Description</role_description>
+                <nickname>Test</nickname>
+            </agent>
+        </agents>
+        <output_schemas>
+            <output_schema name="test_schema">
+                {"type":"object","properties":{"name":{"type":"string"}}}
+            </output_schema>
+        </output_schemas>
+        <nodes>
+            <agent_node id="node1" name="Agent Node">
+                <agent name="test_agent"/>
+                <output_schema name="test_schema"/>
+            </agent_node>
+        </nodes>
+        <graph>
+            <edges>
+                <edge from="node1" to="node1"/>
+            </edges>
+        </graph>
+    </plan>
+    """
+    validator = XMLPlanValidator()
+    is_valid, errors = validator.validate_plan(xml_string)
+    assert is_valid, f"Validation failed with errors: {errors}"
     assert not errors
