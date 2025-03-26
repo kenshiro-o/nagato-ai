@@ -390,10 +390,9 @@ class XMLPlanParser:
             prompt_template = PromptTemplate(template=template_text)
 
         # Process tools if present
-        tools = None
+        tools = []
         tools_elem = agent_node_bs.find("tools")
         if tools_elem:
-            tools = []
             for tool_elem in tools_elem.find_all("tool"):
                 tool_name = tool_elem.get("name")
                 if not tool_name:

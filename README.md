@@ -3,7 +3,7 @@
 
 # Nagato-AI
 
-![Official Nagato AI Poster](docs/assets/Official_Nagato_AI_Poster.webp)
+<img src="docs/assets/Official_Nagato_AI_Poster.webp" width="600" height="auto" alt="Official Nagato AI Poster">
 
 
 Nagato-AI is an intuitive AI Agent library that works across multiple LLMs.
