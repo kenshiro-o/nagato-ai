@@ -386,7 +386,7 @@ def test_parse_agent_node_valid(mock_get_agent_tool_provider, parser, agent_node
     assert agent_node.agent == mock_agent
     assert agent_node.temperature == 0.5
     assert agent_node.max_tokens == 200
-    assert agent_node.tools is None
+    assert agent_node.tools == []
     assert agent_node.output_schema is None
 
 
@@ -734,7 +734,7 @@ def test_parse_tool_node_with_params_conversion_valid(
     agents = {"agent1": mock_agent}
 
     # Create actual tool instance
-    human_input_tool = HumanInputTool()
+    human_input_tool = HumanInputTool
 
     # Create a mock registry that returns actual tool instance
     tool_registry = Mock()
@@ -768,7 +768,7 @@ def test_parse_tool_node_with_params_conversion_with_options(
     agents = {"agent1": mock_agent}
 
     # Create actual tool instance
-    human_input_tool = HumanInputTool()
+    human_input_tool = HumanInputTool
 
     # Create a mock registry that returns actual tool instance
     tool_registry = Mock()
@@ -874,7 +874,7 @@ def test_parse_nodes_with_tool_node_with_params_conversion(mock_get_agent_tool_p
     mock_get_agent_tool_provider.return_value = OpenAIToolProvider
 
     # Configure the tool registry to return real tools
-    human_input_tool = HumanInputTool()
+    human_input_tool = HumanInputTool
 
     # Create mock registry for parsing tool_node_with_params_conversion
     with patch("nagatoai_core.tool.registry.ToolRegistry.get_tool") as mock_get_tool:
