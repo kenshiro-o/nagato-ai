@@ -23,7 +23,6 @@ class OpenAIToolProvider(AbstractToolProvider):
                 non_none_type = next(t for t in field_type.__args__ if t is not type(None))
                 union_type = self._get_field_schema(non_none_type)
                 return {
-                    # "type": self._get_field_schema(non_none_type)["type"],
                     "nullable": True,
                     **union_type,
                 }
@@ -57,17 +56,8 @@ class OpenAIToolProvider(AbstractToolProvider):
                 continue
 
             field_schema = self._get_field_schema(field.annotation)
-            # field_type_name = ""
-            # field_type = field.annotation
-            # if hasattr(field_type, "__name__"):
-            #     field_type_name = field_type.__name__
-            # else:
-            #     field_type_name = str(field_type).replace("typing.", "")
-
-            # field_type_name = get_json_schema_type(field_type)
 
             schema["function"]["parameters"]["properties"][field_name] = {
-                # "type": field_type_name,
                 "description": field.description,
                 **field_schema,
             }

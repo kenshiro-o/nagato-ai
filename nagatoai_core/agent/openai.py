@@ -106,7 +106,7 @@ class OpenAIAgent(Agent):
                     model=self.model,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=max_tokens,
+                    max_completion_tokens=max_tokens,
                     tools=[tool.schema() for tool in tools],
                     tool_choice="auto",
                     response_format=target_output_schema,
@@ -116,7 +116,7 @@ class OpenAIAgent(Agent):
                     model=self.model,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=max_tokens,
+                    max_completion_tokens=max_tokens,
                     tools=[tool.schema() for tool in tools],
                     tool_choice="auto",
                 )
@@ -126,7 +126,7 @@ class OpenAIAgent(Agent):
                     model=self.model,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=max_tokens,
+                    max_completion_tokens=max_tokens,
                     response_format=target_output_schema,
                 )
             else:
@@ -134,7 +134,7 @@ class OpenAIAgent(Agent):
                     model=self.model,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=max_tokens,
+                    max_completion_tokens=max_tokens,
                 )
 
         msg_receive_time = datetime.now(timezone.utc)
@@ -220,7 +220,7 @@ class OpenAIAgent(Agent):
             model=self.model,
             messages=messages,
             temperature=temperature,
-            max_tokens=max_tokens,
+            max_completion_tokens=max_tokens,
         )
         msg_receive_time = datetime.now(timezone.utc)
 

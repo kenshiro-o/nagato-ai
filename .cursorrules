@@ -7,3 +7,5 @@ Follow the instructions below when writing code:
 - Use pytest by default for all tests
 - Put all tests in the folder starting with path ./tests/nagatoai_core/...
 - Only add comments when necessary
+- Write pytest tests using functions as opposed to creating a test class
+- classes that are created in the codebase (with the exception of those in tests) should inherit from Pydantic's BaseModel.

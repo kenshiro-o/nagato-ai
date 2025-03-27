@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://nagatoai.com/schema/plan"
+           xmlns="http://nagatoai.com/schema/plan"
+           elementFormDefault="qualified">
+
+    <!-- Common attributes -->
+    <xs:attributeGroup name="commonAttributes">
+        <xs:attribute name="id" type="xs:string" use="required"/>
+        <xs:attribute name="name" type="xs:string" use="required"/>
+    </xs:attributeGroup>
+
+    <!-- Agent definition -->
+    <xs:element name="plan">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="agents" type="agentsType"/>
+                <xs:element name="output_schemas" type="outputSchemasType" minOccurs="0"/>
+                <xs:element name="nodes" type="nodesType"/>
+                <xs:element name="graph" type="graphType"/>
+            </xs:sequence>
+            <xs:attribute name="id" type="xs:string" use="optional"/>
+            <xs:attribute name="name" type="xs:string" use="optional"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- Agents section -->
+    <xs:complexType name="agentsType">
+        <xs:sequence>
+            <xs:element name="agent" type="agentType" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="agentType">
+        <xs:sequence>
+            <xs:element name="model" type="xs:string"/>
+            <xs:element name="role" type="xs:string"/>
+            <xs:element name="role_description" type="xs:string"/>
+            <xs:element name="nickname" type="xs:string"/>
+        </xs:sequence>
+        <xs:attribute name="name" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <!-- Output schemas section -->
+    <xs:complexType name="outputSchemasType">
+        <xs:sequence>
+            <xs:element name="output_schema" type="outputSchemaType" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="outputSchemaType">
+        <xs:annotation>
+            <xs:documentation>
+                The content of this element should be a valid JSONSchema string.
+                Example: {"type": "object", "properties": {"name": {"type": "string"}}}
+            </xs:documentation>
+        </xs:annotation>
+        <xs:simpleContent>
+            <xs:extension base="schemaContentType">
+                <xs:attribute name="name" type="xs:string" use="required"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <xs:simpleType name="schemaContentType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="\s*\{.*\}\s*"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!-- Nodes section -->
+    <xs:complexType name="nodesType">
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="agent_node" type="agentNodeType"/>
+            <xs:element name="tool_node_with_params_conversion" type="toolNodeWithParamsConversionType"/>
+            <xs:element name="sequential_flow" type="sequentialFlowType"/>
+            <xs:element name="parallel_flow" type="parallelFlowType"/>
+            <xs:element name="conditional_flow" type="conditionalFlowType"/>
+            <xs:element name="transformer_flow" type="transformerFlowType"/>
+            <xs:element name="unfold_flow" type="unfoldFlowType"/>
+        </xs:choice>
+    </xs:complexType>
+
+    <!-- Agent Node -->
+    <xs:complexType name="agentNodeType">
+        <xs:sequence>
+            <xs:element name="agent" type="agentReferenceType"/>
+            <xs:element name="temperature" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="max_tokens" type="xs:integer" minOccurs="0"/>
+            <xs:element name="tools" type="toolsType" minOccurs="0"/>
+            <xs:element name="output_schema" type="outputSchemaReferenceType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attributeGroup ref="commonAttributes"/>
+    </xs:complexType>
+
+    <!-- Tool Node with Params Conversion -->
+    <xs:complexType name="toolNodeWithParamsConversionType">
+        <xs:sequence>
+            <xs:element name="agent" type="agentReferenceType"/>
+            <xs:element name="tool" type="toolReferenceType"/>
+            <xs:element name="retries" type="xs:integer" minOccurs="0"/>
+            <xs:element name="clear_memory_after_conversion" type="xs:boolean" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attributeGroup ref="commonAttributes"/>
+    </xs:complexType>
+
+    <!-- Sequential Flow -->
+    <xs:complexType name="sequentialFlowType">
+        <xs:sequence>
+            <xs:element name="nodes" type="nodesType"/>
+        </xs:sequence>
+        <xs:attributeGroup ref="commonAttributes"/>
+    </xs:complexType>
+
+    <!-- Parallel Flow -->
+    <xs:complexType name="parallelFlowType">
+        <xs:sequence>
+            <xs:element name="max_workers" type="xs:integer" minOccurs="0"/>
+            <xs:element name="nodes" type="nodesType"/>
+        </xs:sequence>
+        <xs:attributeGroup ref="commonAttributes"/>
+    </xs:complexType>
+
+    <!-- Conditional Flow -->
+    <xs:complexType name="conditionalFlowType">
+        <xs:sequence>
+            <xs:element name="broadcast_comparison" type="xs:boolean" minOccurs="0"/>
+            <xs:element name="input_index" type="xs:integer" minOccurs="0"/>
+            <xs:element name="input_attribute" type="xs:string" minOccurs="0"/>
+            <xs:element name="comparison_value" type="xs:string"/>
+            <xs:element name="comparison_type" type="comparisonTypeEnum"/>
+            <xs:element name="predicate_join_type" type="predicateJoinTypeEnum"/>
+            <xs:element name="custom_comparison_function" type="customComparisonFunctionType" minOccurs="0"/>
+            <xs:element name="positive_path" type="nodesType"/>
+            <xs:element name="negative_path" type="nodesType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attributeGroup ref="commonAttributes"/>
+    </xs:complexType>
+
+    <!-- Transformer Flow -->
+    <xs:complexType name="transformerFlowType">
+        <xs:sequence>
+            <xs:element name="flow_param" type="nodesType"/>
+            <xs:element name="functor" type="functorType"/>
+        </xs:sequence>
+        <xs:attributeGroup ref="commonAttributes"/>
+    </xs:complexType>
+
+    <!-- Unfold Flow -->
+    <xs:complexType name="unfoldFlowType">
+        <xs:sequence>
+            <xs:element name="preserve_metadata" type="xs:boolean" minOccurs="0"/>
+            <xs:element name="skip_empty_lists" type="xs:boolean" minOccurs="0"/>
+            <xs:element name="wrap_non_list_inputs" type="xs:boolean" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attributeGroup ref="commonAttributes"/>
+    </xs:complexType>
+
+    <!-- Supporting Types -->
+    <xs:complexType name="agentReferenceType">
+        <xs:attribute name="name" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <xs:complexType name="toolReferenceType">
+        <xs:attribute name="name" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <xs:complexType name="outputSchemaReferenceType">
+        <xs:attribute name="name" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <xs:complexType name="toolsType">
+        <xs:sequence>
+            <xs:element name="tool" type="toolReferenceType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="customComparisonFunctionType">
+        <xs:sequence>
+            <xs:element name="module" type="xs:string"/>
+            <xs:element name="function" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="functorType">
+        <xs:sequence>
+            <xs:element name="module" type="xs:string"/>
+            <xs:element name="function" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Graph section -->
+    <xs:complexType name="graphType">
+        <xs:sequence>
+            <xs:element name="edges" type="edgesType"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="edgesType">
+        <xs:sequence>
+            <xs:element name="edge" type="edgeType" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="edgeType">
+        <xs:attribute name="from" type="xs:string" use="required"/>
+        <xs:attribute name="to" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <!-- Enums -->
+    <xs:simpleType name="comparisonTypeEnum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="EQUAL"/>
+            <xs:enumeration value="NOT_EQUAL"/>
+            <xs:enumeration value="GREATER_THAN"/>
+            <xs:enumeration value="LESS_THAN"/>
+            <xs:enumeration value="GREATER_THAN_OR_EQUAL"/>
+            <xs:enumeration value="LESS_THAN_OR_EQUAL"/>
+            <xs:enumeration value="CONTAINS"/>
+            <xs:enumeration value="NOT_CONTAINS"/>
+            <xs:enumeration value="STARTS_WITH"/>
+            <xs:enumeration value="ENDS_WITH"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="predicateJoinTypeEnum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="AND"/>
+            <xs:enumeration value="OR"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+</xs:schema>
