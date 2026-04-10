@@ -52,6 +52,7 @@ class Task(BaseModel):
     Task represents a task that an agent must complete
     """
 
+    group_id: Optional[str] = None
     id: str
     goal: str
     description: str
