@@ -3,7 +3,7 @@ from typing import Dict, List
 
 # Third Party
 from bs4 import BeautifulSoup
-from langfuse import Langfuse
+from langfuse import get_client, observe
 from rich.console import Console
 
 # Nagato AI
@@ -28,18 +28,33 @@ class SingleCriticEvaluator(TaskEvaluator):
     def __init__(self, **data):
         super().__init__(**data)
 
-        self.langfuse = None if not self.tracing_enabled else Langfuse()
+        self.langfuse = None if not self.tracing_enabled else get_client()
 
+    @observe()
     def evaluate(self, task: Task, agents: Dict[str, Agent], exchanges: List[Exchange]) -> TaskResult:
         """
         Evaluates the task
         """
         console = Console()
-        lf_trace = None
-        if self.tracing_enabled:
-            lf_trace = self.langfuse.trace(
+
+        if self.tracing_enabled and self.langfuse:
+            # Update trace attributes for the evaluation
+            self.langfuse.update_current_trace(
                 name=f"SingleCriticEvaluator - Task {task.goal}",
-                session_id=task.id,
+                session_id=task.group_id,
+                metadata={
+                    "task_id": task.id,
+                    "task_goal": task.goal,
+                    "task_description": task.description,
+                    "exchanges_count": len(exchanges),
+                },
+                input={
+                    "task": {
+                        "goal": task.goal,
+                        "description": task.description,
+                    },
+                    "exchanges_count": len(exchanges),
+                },
             )
 
         # TODO - Create a class that can flatten exchanges into a multi-line string
@@ -67,9 +82,44 @@ class SingleCriticEvaluator(TaskEvaluator):
                         task_result_str += "\n" + exchange.agent_response.content + "\n\n"
 
         critic_prompt = CRITIC_PROMPT.format(goal=task.goal, description=task.description, result=task_result_str)
-        critic_exchange = send_agent_request(
-            self.critic_agent, task, critic_prompt, [], DEFAULT_CRITIC_TEMPERATURE, 2000
-        )
+
+        if self.tracing_enabled and self.langfuse:
+            with self.langfuse.start_as_current_generation(
+                name=f"{self.critic_agent.name} - critic exchange",
+                model=self.critic_agent.model,
+                model_parameters={
+                    "max_tokens": 2000,
+                    "temperature": DEFAULT_CRITIC_TEMPERATURE,
+                },
+            ) as generation:
+                critic_exchange = send_agent_request(
+                    self.critic_agent, task, critic_prompt, [], DEFAULT_CRITIC_TEMPERATURE, 2000
+                )
+
+                # Update generation with critic evaluation details
+                generation.update(
+                    input=critic_exchange.chat_history,
+                    output=critic_exchange.agent_response.content,
+                    metadata={
+                        "model": self.critic_agent.model,
+                        "max_tokens": critic_exchange.token_stats_and_params.max_tokens,
+                        "temperature": critic_exchange.token_stats_and_params.temperature,
+                        "task_id": task.id,
+                        "task_goal": task.goal,
+                        "task_description": task.description,
+                    },
+                    usage={
+                        "input": critic_exchange.token_stats_and_params.input_tokens_used,
+                        "output": critic_exchange.token_stats_and_params.output_tokens_used,
+                        "unit": "TOKENS",
+                    },
+                    start_time=critic_exchange.user_msg.created_at,
+                    end_time=critic_exchange.agent_response.created_at,
+                )
+        else:
+            critic_exchange = send_agent_request(
+                self.critic_agent, task, critic_prompt, [], DEFAULT_CRITIC_TEMPERATURE, 2000
+            )
 
         print_exchange(console, self.critic_agent, critic_exchange, "red")
 
@@ -81,29 +131,17 @@ class SingleCriticEvaluator(TaskEvaluator):
         outcome_enum = TaskOutcome.from_str(outcome)
         task_result = TaskResult(result=task_result_str, evaluation=evaluation, outcome=outcome_enum)
 
-        if lf_trace:
-            lf_trace.generation(
-                start_time=critic_exchange.user_msg.created_at,
-                model=self.critic_agent.model,
-                name=f"{self.critic_agent.name} - critic exchange",
-                input=critic_exchange.chat_history,
-                model_parameters={
-                    "max_tokens": critic_exchange.token_stats_and_params.max_tokens,
-                    "temperature": critic_exchange.token_stats_and_params.temperature,
-                },
-                metadata={
-                    "task_id": task.id,
-                    "task_goal": task.goal,
-                    "task_description": task.description,
-                    "task_outcome": str(outcome_enum),
-                },
-                output=critic_exchange.agent_response.content,
-                end_time=critic_exchange.agent_response.created_at,
-                usage={
-                    "input": critic_exchange.token_stats_and_params.input_tokens_used,
-                    "output": critic_exchange.token_stats_and_params.output_tokens_used,
-                    "unit:": "TOKENS",
-                },
+        # Update trace with final evaluation outcome
+        if self.tracing_enabled and self.langfuse:
+            self.langfuse.update_current_trace(
+                output={
+                    "task_result": {
+                        "outcome": str(outcome_enum),
+                        "evaluation": evaluation,
+                        "result": task_result_str,
+                    },
+                    "critic_response": critic_exchange.agent_response.content,
+                }
             )
 
         return task_result

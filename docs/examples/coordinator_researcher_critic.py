@@ -5,8 +5,9 @@ from time import sleep
 
 from rich.console import Console
 from bs4 import BeautifulSoup
+from uuid import uuid4
 from dotenv import load_dotenv
-from langfuse import Langfuse
+from langfuse import get_client, observe
 
 from nagatoai_core.agent.agent import Agent
 from nagatoai_core.agent.factory import create_agent, get_agent_tool_provider
@@ -39,7 +40,8 @@ from nagatoai_core.tool.lib.time.time_now import TimeNowTool
 from nagatoai_core.tool.lib.video.youtube.video_download import YouTubeVideoDownloadTool
 from nagatoai_core.tool.lib.video.details_checker import VideoCheckerTool
 from nagatoai_core.tool.lib.audio.stt.groq_whisper import GroqWhisperTool
-from nagatoai_core.tool.lib.audio.stt.assemblyai import AssemblyAITranscriptionTool
+
+# from nagatoai_core.tool.lib.audio.stt.assemblyai import AssemblyAITranscriptionTool
 from nagatoai_core.tool.lib.audio.stt.openai_whisper import OpenAIWhisperTool
 from nagatoai_core.tool.lib.audio.tts.openai import OpenAITTSTool
 from nagatoai_core.tool.lib.audio.video_to_mp3 import VideoToMP3Tool
@@ -68,9 +70,17 @@ def main():
     groq_api_key = os.getenv("GROQ_API_KEY")
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
 
+    coordinator_agent: Agent = create_agent(
+        anthropic_api_key,
+        "claude-opus-4-20250514",
+        "Coordinator",
+        COORDINATOR_SYSTEM_PROMPT,
+        "Coordinator Agent",
+    )
+
     # coordinator_agent: Agent = create_agent(
-    #     anthropic_api_key,
-    #     "claude-3-5-sonnet-20241022",
+    #     google_api_key,
+    #     "gemini-1.5-flash-8b",
     #     "Coordinator",
     #     COORDINATOR_SYSTEM_PROMPT,
     #     "Coordinator Agent",
@@ -92,17 +102,17 @@ def main():
     #     "Coordinator Agent",
     # )
 
-    coordinator_agent: Agent = create_agent(
-        groq_api_key,
-        "groq-deepseek-r1-distill-llama-70b-specdec",
-        "Coordinator",
-        COORDINATOR_SYSTEM_PROMPT,
-        "Coordinator Agent",
-    )
+    # coordinator_agent: Agent = create_agent(
+    #     groq_api_key,
+    #     "groq-deepseek-r1-distill-llama-70b",
+    #     "Coordinator",
+    #     COORDINATOR_SYSTEM_PROMPT,
+    #     "Coordinator Agent",
+    # )
 
     researcher_agent = create_agent(
         anthropic_api_key,
-        "claude-3-5-sonnet-20241022",
+        "claude-sonnet-4-20250514",
         "Researcher",
         RESEARCHER_SYSTEM_PROMPT,
         "Researcher Agent",
@@ -141,8 +151,8 @@ def main():
     # )
 
     critic_agent = create_agent(
-        anthropic_api_key,
-        "claude-3-5-haiku-20241022",
+        google_api_key,
+        "gemini-2.5-flash",
         "Critic",
         CRITIC_SYSTEM_PROMPT,
         "Critic Agent",
@@ -181,9 +191,9 @@ def main():
     tool_registry.register_tool(YouTubeVideoDownloadTool)
     tool_registry.register_tool(GroqWhisperTool)
     tool_registry.register_tool(OpenAITTSTool)
-    tool_registry.register_tool(AssemblyAITranscriptionTool)
+    # tool_registry.register_tool(AssemblyAITranscriptionTool)
     tool_registry.register_tool(VideoToMP3Tool)
-    tool_registry.register_tool(OpenAIWhisperTool)
+    # tool_registry.register_tool(OpenAIWhisperTool)
     tool_registry.register_tool(ElevenLabsTTSTool)
     tool_registry.register_tool(AfPlayTool)
 
@@ -212,6 +222,7 @@ def main():
         user_input.append(line)
 
     problem_statement = "\n".join(user_input)
+    task_group_id = str(uuid4())
 
     problem_statement_prompt = OBJECTIVE_PROMPT.format(
         problem_statement=problem_statement,
@@ -219,11 +230,82 @@ def main():
     )
 
     planner_task = Task(
+        group_id=task_group_id,
         goal="Generate plan and objective",
         description="Generate objective given input description. Then formulate a plan with tasks to complete based on input description and objective.",
     )
 
-    coordinator_exchange = send_agent_request(coordinator_agent, planner_task, problem_statement_prompt, [], 0.6, 2000)
+    # Initialize Langfuse client
+    langfuse = get_client()
+
+    @observe()
+    def run_coordinator():
+        # Update trace for the coordinator planning session
+        if langfuse:
+            langfuse.update_current_trace(
+                name="Planner agent trace",
+                session_id=task_group_id,
+                metadata={
+                    "task_id": planner_task.id,
+                    "task_goal": planner_task.goal,
+                    "task_description": planner_task.description,
+                    "problem_statement": problem_statement,
+                },
+                input={
+                    "problem_statement": problem_statement,
+                    "tools_available": tools_available_str,
+                },
+            )
+
+        if langfuse:
+            with langfuse.start_as_current_generation(
+                name=f"{coordinator_agent.name} - initial exchange",
+                model=coordinator_agent.model,
+                model_parameters={
+                    "max_tokens": 2000,
+                    "temperature": 0,
+                },
+            ) as generation:
+                coordinator_exchange = send_agent_request(
+                    coordinator_agent, planner_task, problem_statement_prompt, [], 1, 2000
+                )
+
+                # Update generation with model call details
+                generation.update(
+                    input=coordinator_exchange.chat_history,
+                    output=coordinator_exchange.agent_response.content,
+                    metadata={
+                        "model": coordinator_agent.model,
+                        "max_tokens": coordinator_exchange.token_stats_and_params.max_tokens,
+                        "temperature": coordinator_exchange.token_stats_and_params.temperature,
+                        "task_id": planner_task.id,
+                        "task_goal": planner_task.goal,
+                        "task_description": planner_task.description,
+                    },
+                    usage={
+                        "input": coordinator_exchange.token_stats_and_params.input_tokens_used,
+                        "output": coordinator_exchange.token_stats_and_params.output_tokens_used,
+                        "unit": "TOKENS",
+                    },
+                    start_time=coordinator_exchange.user_msg.created_at,
+                    end_time=coordinator_exchange.agent_response.created_at,
+                )
+        else:
+            coordinator_exchange = send_agent_request(
+                coordinator_agent, planner_task, problem_statement_prompt, [], 0, 2000
+            )
+
+        # Update trace with final output
+        if langfuse:
+            langfuse.update_current_trace(
+                output={
+                    "coordinator_response": coordinator_exchange.agent_response.content,
+                }
+            )
+
+        return coordinator_exchange
+
+    coordinator_exchange = run_coordinator()
 
     print(f"Coordinator response: {coordinator_exchange.agent_response.content}")
 
@@ -232,35 +314,6 @@ def main():
     tasks = soup.find_all("task")
 
     print_exchange(console, coordinator_agent, coordinator_exchange, "purple")
-
-    # TODO - Improve the way we do tracing...
-    langfuse = Langfuse()
-    lf_trace = langfuse.trace(
-        name="Planner agent trace",
-        session_id=planner_task.id,
-    )
-    lf_trace.generation(
-        start_time=coordinator_exchange.user_msg.created_at,
-        model=coordinator_agent.model,
-        name=f"{coordinator_agent.name} - initial exchange",
-        input=coordinator_exchange.chat_history,
-        model_parameters={
-            "max_tokens": coordinator_exchange.token_stats_and_params.max_tokens,
-            "temperature": coordinator_exchange.token_stats_and_params.temperature,
-        },
-        metadata={
-            "task_id": planner_task.id,
-            "task_goal": planner_task.goal,
-            "task_description": planner_task.description,
-        },
-        output=coordinator_exchange.agent_response.content,
-        end_time=coordinator_exchange.agent_response.created_at,
-        usage={
-            "input": coordinator_exchange.token_stats_and_params.input_tokens_used,
-            "output": coordinator_exchange.token_stats_and_params.output_tokens_used,
-            "unit:": "TOKENS",
-        },
-    )
 
     tasks_list: List[Task] = []
     for task in tasks:
@@ -273,10 +326,10 @@ def main():
         for tool in tools_recommended:
             tools_recs.append(tool.get_text(strip=True))
 
-        task = Task(goal=goal, description=description, tools_recommended=tools_recs)
+        task = Task(group_id=task_group_id, goal=goal, description=description, tools_recommended=tools_recs)
         tasks_list.append(task)
 
-    mission = Mission(problem_statement=problem_statement, objective=objective, tasks=tasks_list)
+    mission = Mission(id=task_group_id, problem_statement=problem_statement, objective=objective, tasks=tasks_list)
     sleep(3)
 
     for task in mission.tasks:

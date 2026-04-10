@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Type, Union
 
 # Third Party
-from langfuse import Langfuse
+from langfuse import get_client, observe
 from rich.console import Console
 
 # Nagato AI
@@ -52,9 +52,10 @@ class SingleAgentTaskRunner(TaskRunner):
         if len(self.agents) != 1:
             raise ValueError("SingleAgentTaskRunner requires only one agent")
 
-        self.langfuse = None if not self.tracing_enabled else Langfuse()
+        self.langfuse = None if not self.tracing_enabled else get_client()
         self.logger = StructuredLogger.get_logger({})
 
+    # TODO - Refactor code so that this function is called whenever a tool call must be run
     def _run_tool_call(
         self,
         tool_call: ToolCall,
@@ -63,7 +64,7 @@ class SingleAgentTaskRunner(TaskRunner):
         console: Console,
     ) -> Exchange:
         """
-        Runs a tool call
+        Runs a tool call. Unused for now.
         """
         tool = self.tool_registry.get_tool(tool_call.name)
         tool_instance = tool()
@@ -100,16 +101,27 @@ class SingleAgentTaskRunner(TaskRunner):
 
         return tool_result_exchange
 
+    @observe()
     def _run(self) -> List[Exchange]:
         """
         The workhorse of the run method
         """
         console = Console()
-        lf_trace = None
-        if self.tracing_enabled:
-            lf_trace = self.langfuse.trace(
+
+        if self.tracing_enabled and self.langfuse:
+            # Update trace attributes for the current execution
+            self.langfuse.update_current_trace(
                 name=f"SingleAgentTaskRunner - Task {self.current_task.goal}",
-                session_id=self.current_task.id,
+                session_id=self.current_task.group_id,
+                metadata={
+                    "task_id": self.current_task.id,
+                    "task_goal": self.current_task.goal,
+                    "task_description": self.current_task.description,
+                },
+                input={
+                    "goal": self.current_task.goal,
+                    "description": self.current_task.description,
+                },
             )
 
         # Pick the only agent from the dictionary
@@ -159,39 +171,55 @@ class SingleAgentTaskRunner(TaskRunner):
                     tools_recommended=t_recs,
                 )
 
-        exchange = send_agent_request(
-            agent,
-            self.current_task,
-            task_prompt,
-            available_tools,
-            DEFAULT_AGENT_TEMPERATURE,
-            4096,
-        )
-        exchanges.append(exchange)
-
-        if lf_trace:
-            lf_trace.generation(
-                start_time=exchange.user_msg.created_at,
-                model=agent.model,
+        if self.tracing_enabled and self.langfuse:
+            with self.langfuse.start_as_current_generation(
                 name=f"{agent.name} - initial exchange",
-                input=exchange.chat_history,
+                model=agent.model,
                 model_parameters={
-                    "max_tokens": exchange.token_stats_and_params.max_tokens,
-                    "temperature": exchange.token_stats_and_params.temperature,
+                    "max_tokens": 4096,
+                    "temperature": DEFAULT_AGENT_TEMPERATURE,
                 },
-                metadata={
-                    "task_id": self.current_task.id,
-                    "task_goal": self.current_task.goal,
-                    "task_description": self.current_task.description,
-                },
-                output=exchange.agent_response.content,
-                end_time=exchange.agent_response.created_at,
-                usage={
-                    "input": exchange.token_stats_and_params.input_tokens_used,
-                    "output": exchange.token_stats_and_params.output_tokens_used,
-                    "unit:": "TOKENS",
-                },
+            ) as generation:
+                exchange = send_agent_request(
+                    agent,
+                    self.current_task,
+                    task_prompt,
+                    available_tools,
+                    DEFAULT_AGENT_TEMPERATURE,
+                    4096,
+                )
+                exchanges.append(exchange)
+
+                # Update generation with model call details
+                generation.update(
+                    input=exchange.chat_history,
+                    output=exchange.agent_response.content,
+                    metadata={
+                        "model": agent.model,
+                        "max_tokens": exchange.token_stats_and_params.max_tokens,
+                        "temperature": exchange.token_stats_and_params.temperature,
+                        "task_id": self.current_task.id,
+                        "task_goal": self.current_task.goal,
+                        "task_description": self.current_task.description,
+                    },
+                    usage={
+                        "input": exchange.token_stats_and_params.input_tokens_used,
+                        "output": exchange.token_stats_and_params.output_tokens_used,
+                        "unit": "TOKENS",
+                    },
+                    start_time=exchange.user_msg.created_at,
+                    end_time=exchange.agent_response.created_at,
+                )
+        else:
+            exchange = send_agent_request(
+                agent,
+                self.current_task,
+                task_prompt,
+                available_tools,
+                DEFAULT_AGENT_TEMPERATURE,
+                4096,
             )
+            exchanges.append(exchange)
 
         print_exchange(console, agent, exchange, "blue", task_id=self.current_task.id)
 
@@ -241,39 +269,55 @@ class SingleAgentTaskRunner(TaskRunner):
 
             print(f"*** Executed {len(tool_runs)} tool runs with results: {tool_results}")
 
-            tool_result_exchange = agent.send_tool_run_results(
-                self.current_task,
-                # [tool_result],
-                tool_results,
-                available_tools,
-                DEFAULT_AGENT_TEMPERATURE,
-                4096,
-            )
-            exchanges.append(tool_result_exchange)
-
-            if lf_trace:
-                lf_trace.generation(
-                    start_time=tool_result_exchange.user_msg.created_at,
-                    model=agent.model,
+            if self.tracing_enabled and self.langfuse:
+                with self.langfuse.start_as_current_generation(
                     name=f"{agent.name} - tool run - {tool_call.name} (id={tool_call.id})",
-                    input=tool_result_exchange.chat_history,
+                    model=agent.model,
                     model_parameters={
-                        "max_tokens": tool_result_exchange.token_stats_and_params.max_tokens,
-                        "temperature": tool_result_exchange.token_stats_and_params.temperature,
+                        "max_tokens": 4096,
+                        "temperature": DEFAULT_AGENT_TEMPERATURE,
                     },
-                    metadata={
-                        "task_id": self.current_task.id,
-                        "task_goal": self.current_task.goal,
-                        "task_description": self.current_task.description,
-                    },
-                    output=tool_result_exchange.agent_response.content,
-                    end_time=tool_result_exchange.agent_response.created_at,
-                    usage={
-                        "input": tool_result_exchange.token_stats_and_params.input_tokens_used,
-                        "output": tool_result_exchange.token_stats_and_params.output_tokens_used,
-                        "unit:": "TOKENS",
-                    },
+                ) as generation:
+                    tool_result_exchange = agent.send_tool_run_results(
+                        self.current_task,
+                        # [tool_result],
+                        tool_results,
+                        available_tools,
+                        DEFAULT_AGENT_TEMPERATURE,
+                        4096,
+                    )
+                    exchanges.append(tool_result_exchange)
+
+                    # Update generation with tool run details
+                    generation.update(
+                        input=tool_result_exchange.chat_history,
+                        output=tool_result_exchange.agent_response.content,
+                        metadata={
+                            "model": agent.model,
+                            "max_tokens": tool_result_exchange.token_stats_and_params.max_tokens,
+                            "temperature": tool_result_exchange.token_stats_and_params.temperature,
+                            "task_id": self.current_task.id,
+                            "task_goal": self.current_task.goal,
+                            "task_description": self.current_task.description,
+                        },
+                        usage_details={
+                            "input": tool_result_exchange.token_stats_and_params.input_tokens_used,
+                            "output": tool_result_exchange.token_stats_and_params.output_tokens_used,
+                            "unit": "TOKENS",
+                        },
+                        start_time=tool_result_exchange.user_msg.created_at,
+                        end_time=tool_result_exchange.agent_response.created_at,
+                    )
+            else:
+                tool_result_exchange = agent.send_tool_run_results(
+                    self.current_task,
+                    # [tool_result],
+                    tool_results,
+                    available_tools,
+                    DEFAULT_AGENT_TEMPERATURE,
+                    4096,
                 )
+                exchanges.append(tool_result_exchange)
 
             for tool_run in tool_runs:
                 self.tool_cache.add_tool_run(tool_run)
@@ -291,12 +335,42 @@ class SingleAgentTaskRunner(TaskRunner):
 
             latest_exchange = exchanges[-1]
 
+        # Update trace with final output
+        if self.tracing_enabled and self.langfuse:
+            self.langfuse.update_current_trace(
+                output={
+                    "exchanges_count": len(exchanges),
+                    "final_response": latest_exchange.agent_response.content if exchanges else None,
+                }
+            )
+
         return exchanges
 
+    @observe()
     def run(self) -> List[Exchange]:
         """
         Runs the task
         """
+        if self.tracing_enabled and self.langfuse:
+            # Update trace attributes for the overall task run
+            self.langfuse.update_current_trace(
+                name=f"SingleAgentTaskRunner.run - {self.current_task.goal}",
+                session_id=self.current_task.group_id,
+                metadata={
+                    "task_id": self.current_task.id,
+                    "task_goal": self.current_task.goal,
+                    "task_description": self.current_task.description,
+                    "tracing_enabled": self.tracing_enabled,
+                },
+                input={
+                    "task": {
+                        "goal": self.current_task.goal,
+                        "description": self.current_task.description,
+                        "tools_recommended": self.current_task.tools_recommended,
+                    }
+                },
+            )
+
         task_pass = False
         task_retry_count = 0
         task_result: Optional[TaskResult] = None
@@ -336,5 +410,19 @@ class SingleAgentTaskRunner(TaskRunner):
                     task_goal=self.current_task.goal,
                     task_description=self.current_task.description,
                 )
+
+        # Update trace with final outcome
+        if self.tracing_enabled and self.langfuse:
+            self.langfuse.update_current_trace(
+                output={
+                    "task_result": {
+                        "outcome": str(task_result.outcome) if task_result else None,
+                        "evaluation": task_result.evaluation if task_result else None,
+                        "retry_count": task_retry_count,
+                    },
+                    "total_exchanges": len(all_exchanges),
+                    "task_passed": task_pass,
+                }
+            )
 
         return all_exchanges

@@ -28,11 +28,11 @@ class Mission(BaseModel):
     Mission represents a mission an agent or a group of agents must complete
     """
 
-    # Your Mission class definition
     class Config:
         arbitrary_types_allowed = True
         extra = "allow"
 
+    id: str
     problem_statement: str
     objective: str
     tasks: List[Task]
