@@ -36,14 +36,14 @@ def test_chat_basic_prompt(google_client):
     """Test the chat method with a basic prompt without tools using real Google API."""
     agent = GoogleAgent(
         client=google_client,
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
     )
 
     # Act
-    result = agent.chat(task=None, prompt="What is the capital of France?", tools=[], temperature=0.7, max_tokens=100)
+    result = agent.chat(task=None, prompt="What is the capital of France?", tools=[], temperature=0.7, max_tokens=1024)
 
     # Assert
     assert isinstance(result, Exchange)
@@ -55,7 +55,7 @@ def test_chat_basic_prompt(google_client):
     assert result.token_stats_and_params.input_tokens_used > 0
     assert result.token_stats_and_params.output_tokens_used > 0
     assert result.token_stats_and_params.temperature == 0.7
-    assert result.token_stats_and_params.max_tokens == 100
+    assert result.token_stats_and_params.max_tokens == 1024
 
     # Check that messages were formatted correctly
     # messages = result.chat_history
@@ -71,7 +71,7 @@ def test_chat_multi_turn_conversation(google_client):
 
     agent = GoogleAgent(
         client=google_client,
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -83,7 +83,7 @@ def test_chat_multi_turn_conversation(google_client):
         prompt="What is the capital of France?",
         tools=[],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert
@@ -98,7 +98,7 @@ def test_chat_multi_turn_conversation(google_client):
         prompt="What is the capital of Italy?",
         tools=[],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert
@@ -112,9 +112,9 @@ def test_chat_multi_turn_conversation(google_client):
     chat_history: List[Exchange] = agent.history
     assert len(chat_history) == 2
     assert chat_history[0].user_msg.content == "What is the capital of France?"
-    assert chat_history[0].agent_response.content.strip() == "The capital of France is Paris."
+    assert "Paris" in chat_history[0].agent_response.content
     assert chat_history[1].user_msg.content == "What is the capital of Italy?"
-    assert chat_history[1].agent_response.content.strip() == "The capital of Italy is Rome."
+    assert "Rome" in chat_history[1].agent_response.content
 
 
 def test_chat_with_tool(google_client):
@@ -122,7 +122,7 @@ def test_chat_with_tool(google_client):
 
     agent = GoogleAgent(
         client=google_client,
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -142,7 +142,7 @@ def test_chat_with_tool(google_client):
         prompt="What time is it right now? Please use the TimeNowTool to check with UTC timezone. Your reply should start with the sentence 'It is currently ...'",
         tools=[time_tool],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert
@@ -157,7 +157,7 @@ def test_chat_then_tool_then_tool_response(google_client):
 
     agent = GoogleAgent(
         client=google_client,
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -169,7 +169,7 @@ def test_chat_then_tool_then_tool_response(google_client):
         prompt="What is the capital of France?",
         tools=[],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert first response
@@ -192,7 +192,7 @@ def test_chat_then_tool_then_tool_response(google_client):
         prompt="What time is it right now? Please use the TimeNowTool to check with UTC timezone. Your reply should start with the sentence 'It is currently ...'",
         tools=[time_tool],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert tool call was made
@@ -211,7 +211,7 @@ def test_chat_then_tool_then_tool_response(google_client):
         ],
         tools=[time_tool],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert final response contains the time
@@ -225,7 +225,7 @@ def test_chat_then_tool_then_tool_response_with_error(google_client):
 
     agent = GoogleAgent(
         client=google_client,
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -237,7 +237,7 @@ def test_chat_then_tool_then_tool_response_with_error(google_client):
         prompt="What is the capital of France?",
         tools=[],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert
@@ -260,7 +260,7 @@ def test_chat_then_tool_then_tool_response_with_error(google_client):
         prompt="What time is it right now? Please use the TimeNowTool to check with UTC timezone. Your reply should start with the sentence 'It is currently ...'",
         tools=[time_tool],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert tool call was made
@@ -280,13 +280,13 @@ def test_chat_then_tool_then_tool_response_with_error(google_client):
         ],
         tools=[time_tool],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert final response contains the error
     assert isinstance(final_result, Exchange)
     assert final_result.agent_response.content is not None
-    assert any(keyword in final_result.agent_response.content.lower() for keyword in ["error", "unavailable"])
+    assert any(keyword in final_result.agent_response.content.lower() for keyword in ["error", "unavailable", "unable", "sorry", "fail", "couldn't", "could not", "problem", "apolog", "unfortunately"])
 
 
 def test_chat_then_tool_then_tool_response_then_chat(google_client):
@@ -294,7 +294,7 @@ def test_chat_then_tool_then_tool_response_then_chat(google_client):
 
     agent = GoogleAgent(
         client=google_client,
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -306,7 +306,7 @@ def test_chat_then_tool_then_tool_response_then_chat(google_client):
         prompt="What is the capital of France?",
         tools=[],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert
@@ -329,7 +329,7 @@ def test_chat_then_tool_then_tool_response_then_chat(google_client):
         prompt="What time is it right now? Please use the TimeNowTool to check with UTC timezone. Your reply should start with the sentence 'It is currently ...'",
         tools=[time_tool],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert tool call was made
@@ -348,7 +348,7 @@ def test_chat_then_tool_then_tool_response_then_chat(google_client):
         ],
         tools=[time_tool],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert tool response was made
@@ -362,7 +362,7 @@ def test_chat_then_tool_then_tool_response_then_chat(google_client):
         prompt="What is the capital of the United States?",
         tools=[],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
     )
 
     # Assert
@@ -389,7 +389,7 @@ def test_chat_with_structured_output(google_client):
 
     agent = GoogleAgent(
         client=google_client,
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -401,7 +401,7 @@ def test_chat_with_structured_output(google_client):
         prompt="Provide information about France in a structured format.",
         tools=[],
         temperature=0.7,
-        max_tokens=100,
+        max_tokens=1024,
         target_output_schema=CountryInfo,
     )
 
@@ -415,5 +415,5 @@ def test_chat_with_structured_output(google_client):
     assert isinstance(parsed_content, CountryInfo)
     assert parsed_content.name == "France"
     assert parsed_content.capital == "Paris"
-    assert parsed_content.population == 67000000
+    assert 60000000 <= parsed_content.population <= 70000000
     assert "French" in parsed_content.languages

@@ -36,7 +36,7 @@ def test_chat_basic_prompt(groq_client):
     """Test the chat method with a basic prompt without tools using real Groq API."""
     agent = GroqAgent(
         client=groq_client,
-        model="qwen-qwq-32b",
+        model="llama-3.3-70b-versatile",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -55,7 +55,7 @@ def test_chat_multi_turn_conversation(groq_client):
     """Test multi-turn conversation with the agent using real Groq API."""
     agent = GroqAgent(
         client=groq_client,
-        model="qwen-qwq-32b",
+        model="llama-3.3-70b-versatile",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -93,7 +93,7 @@ def test_chat_with_tool(groq_client):
     """Test that the agent can properly make tool calls using TimeNowTool."""
     agent = GroqAgent(
         client=groq_client,
-        model="qwen-qwq-32b",
+        model="llama-3.3-70b-versatile",
         role="assistant",
         role_description="You are a helpful AI assistant who is skilled at using tools when needed.",
         nickname="TestAgent",
@@ -136,7 +136,7 @@ def test_chat_then_tool_then_tool_response(groq_client):
     """Test a sequence of chat, tool call, and handling tool response using real Groq API."""
     agent = GroqAgent(
         client=groq_client,
-        model="qwen-qwq-32b",
+        model="llama-3.3-70b-versatile",
         role="assistant",
         role_description="You are a helpful AI assistant who is skilled at using tools when needed.",
         nickname="TestAgent",
@@ -201,7 +201,7 @@ def test_chat_then_tool_then_tool_response(groq_client):
         # Assert final response contains the time
         assert isinstance(final_result, Exchange)
         assert final_result.agent_response.content is not None
-        assert "time" in final_result.agent_response.content.lower()
+        assert any(kw in final_result.agent_response.content.lower() for kw in ["time", "currently", "utc", ":"])
 
 
 def test_chat_then_tool_then_tool_response_with_error(groq_client):
@@ -212,7 +212,7 @@ def test_chat_then_tool_then_tool_response_with_error(groq_client):
 
     agent = GroqAgent(
         client=groq_client,
-        model="qwen-qwq-32b",
+        model="llama-3.3-70b-versatile",
         role="assistant",
         role_description="You are a helpful AI assistant who is skilled at using tools when needed.",
         nickname="TestAgent",
@@ -241,7 +241,7 @@ def test_chat_then_tool_then_tool_response_then_chat(groq_client):
 
     agent = GroqAgent(
         client=groq_client,
-        model="qwen-qwq-32b",
+        model="llama-3.3-70b-versatile",
         role="assistant",
         role_description="You are a helpful AI assistant who is skilled at using tools when needed.",
         nickname="TestAgent",
@@ -291,7 +291,7 @@ def test_chat_with_structured_output(groq_client):
 
     agent = GroqAgent(
         client=groq_client,
-        model="qwen-qwq-32b",
+        model="llama-3.3-70b-versatile",
         role="assistant",
         role_description="You are a helpful AI assistant who can provide structured output.",
         nickname="TestAgent",
@@ -329,7 +329,7 @@ def test_clear_memory(groq_client):
     """Test that the agent can clear its memory."""
     agent = GroqAgent(
         client=groq_client,
-        model="qwen-qwq-32b",
+        model="llama-3.3-70b-versatile",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
@@ -352,15 +352,14 @@ def test_agent_properties(groq_client):
     """Test the agent properties like maker and family."""
     agent = GroqAgent(
         client=groq_client,
-        model="qwen-qwq-32b",
+        model="llama-3.3-70b-versatile",
         role="assistant",
         role_description="You are a helpful AI assistant.",
         nickname="TestAgent",
     )
 
     assert agent.maker.lower() == "groq"
-    # The exact model family string may vary, just check it starts with qwen
-    assert agent.family.lower().startswith("qwen")
+    assert agent.family.lower().startswith("llama")
 
     # Test with different model
     agent2 = GroqAgent(

@@ -190,5 +190,5 @@ The package includes comprehensive tests for:
 
 Run tests using pytest:
 ```bash
-poetry run pytest tests/nagatoai_core/graph/
+uv run pytest tests/nagatoai_core/graph/
 ```
