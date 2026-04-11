@@ -22,6 +22,7 @@ def extract_anthropic_model_family(model: str) -> str:
     :param model: The Anthropic model name.
     """
     family_prefixes = [
+        "claude-3.5",
         "claude-3",
     ]
     for prefix in family_prefixes:
@@ -93,23 +94,17 @@ class AnthropicAgent(Agent):
         messages.append({"role": "user", "content": prompt})
 
         msg_send_time = datetime.now(timezone.utc)
-        if len(tools) == 0:
-            response = self.client.messages.create(
-                model=self.model,
-                system=self.role_description,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-        else:
-            response = self.client.beta.tools.messages.create(
-                model=self.model,
-                system=self.role_description,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                tools=[tool.schema() for tool in tools],
-            )
+        create_kwargs = dict(
+            model=self.model,
+            system=self.role_description,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        if len(tools) > 0:
+            create_kwargs["tools"] = [tool.schema() for tool in tools]
+
+        response = self.client.messages.create(**create_kwargs)
 
         msg_receive_time = datetime.now(timezone.utc)
 
@@ -121,7 +116,10 @@ class AnthropicAgent(Agent):
                 # TODO - dirty hack to avoid empty responses. In the future find a more elegant solution
                 response_content = response_block.text if response_block.text else "OK"
                 if target_output_schema:
-                    response_json = json.loads(response_content)
+                    text = response_content.strip()
+                    if text.startswith("```"):
+                        text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+                    response_json = json.loads(text)
                     response_content = target_output_schema(**response_json)
             elif response_block.type == "tool_use":
                 tool_id = response_block.id
@@ -172,31 +170,34 @@ class AnthropicAgent(Agent):
 
         final_tool_result_content = ""
         for tool_result in tool_results:
-            # Use string representation of the result - if it is a complex object, it will be using JSON dumps
-            result_str = ""
-            # If tool result is a dictionary or list, we will use JSON dumps to convert it to a string
-            if isinstance(tool_result.result, dict) or isinstance(tool_result.result, list):
+            if tool_result.error:
+                result_str = tool_result.error
+                is_error = True
+            elif isinstance(tool_result.result, dict) or isinstance(tool_result.result, list):
                 result_str = json.dumps(tool_result.result)
+                is_error = False
             else:
                 result_str = str(tool_result.result)
+                is_error = False
 
             final_tool_result_content += result_str + "\n"
+            tool_result_block = {
+                "type": "tool_result",
+                "tool_use_id": tool_result.id,
+                "content": result_str,
+            }
+            if is_error:
+                tool_result_block["is_error"] = True
             messages.append(
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": tool_result.id,
-                            "content": result_str,
-                        }
-                    ],
+                    "content": [tool_result_block],
                 }
             )
 
         msg_send_time = datetime.now(timezone.utc)
 
-        response = self.client.beta.tools.messages.create(
+        response = self.client.messages.create(
             model=self.model,
             system=self.role_description,
             messages=messages,

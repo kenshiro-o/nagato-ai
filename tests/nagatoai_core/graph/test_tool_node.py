@@ -29,7 +29,7 @@ def test_correct_tool_execution(tool_provider: Type[AbstractTool]):
     """Test the correct execution of a ToolNode with valid parameters."""
 
     node = ToolNode(id="tool_node", tool_provider=tool_provider)
-    inputs = [NodeResult(node_id="some_id", result={"use_utc_timezone": False}, error=None, step=1)]
+    inputs = [NodeResult(node_id="some_id", result={"use_utc_timezone": True}, error=None, step=1)]
 
     result = node.execute(inputs)
 

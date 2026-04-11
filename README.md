@@ -23,11 +23,11 @@ Note that from now on I will use the terms _Nagato_ and *Nagato-AI* interchangib
 
 ### Working directly with source reposirory
 
-If you're working on the source repository (either via a fork or the original repository), you must ensure that you have [poetry](https://python-poetry.org/) packaging/dependency management installed on your machine.
-Once poetry is installed, then simply run the following command in your termninal (from the root folder of nagato code base) to install all required dependencies:
+If you're working on the source repository (either via a fork or the original repository), you must ensure that you have [uv](https://docs.astral.sh/uv/) packaging/dependency management installed on your machine.
+Once uv is installed, then simply run the following command in your termninal (from the root folder of nagato code base) to install all required dependencies:
 
 ```
-poetry install
+uv sync
 ```
 
 ### Installing via pip
@@ -67,7 +67,7 @@ For instance if you only plan to use GPT-based agents and Readwise tools you sho
 Assuming your program's entrypoint is defined in a file called `main.py`, you can run it by typing the following command:
 
 ```
-poetry run python main.py
+uv run python main.py
 ```
 
 
