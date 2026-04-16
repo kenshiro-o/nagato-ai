@@ -3,7 +3,7 @@ import importlib
 import logging
 import os
 import re
-from typing import Dict, Tuple, Type
+from typing import Dict, List, Tuple, Type
 
 # Third Party
 from bs4 import BeautifulSoup
@@ -20,6 +20,7 @@ from nagatoai_core.agent.openai import OpenAIAgent
 from nagatoai_core.graph.abstract_node import AbstractNode
 from nagatoai_core.graph.agent_node import AgentNode
 from nagatoai_core.graph.conditional_flow import ConditionalFlow
+from nagatoai_core.graph.delta import AddEdge, AddNode, GraphDelta, RemoveEdge, RemoveNode, ReplaceNode
 from nagatoai_core.graph.graph import Graph
 from nagatoai_core.graph.parallel_flow import ParallelFlow
 from nagatoai_core.graph.plan.base_model_generator import BaseModelGenerator
@@ -922,6 +923,112 @@ class XMLPlanParser:
         graph.compile()
 
         return graph
+
+    def parse_delta(
+        self,
+        delta_xml: str,
+        agents: Dict[str, Agent],
+        output_schemas: Dict[str, Type[BaseModel]],
+        current_graph: Graph,
+    ) -> GraphDelta:
+        """
+        Parse a delta XML string into a GraphDelta object.
+
+        :param delta_xml: The XML string describing the delta operations.
+        :param agents: Dictionary of pre-parsed Agent instances.
+        :param output_schemas: Dictionary of output schema models.
+        :param current_graph: The current graph, used for validation.
+        :returns: A GraphDelta containing the parsed operations.
+        :raises ValueError: If the XML is invalid or references unknown nodes.
+        """
+        soup = BeautifulSoup(delta_xml, "xml")
+        delta_elem = soup.find("delta")
+        if delta_elem is None:
+            raise ValueError("No <delta> element found in XML")
+
+        ops: List = []
+
+        for child in delta_elem.find_all(recursive=False):
+            tag = child.name
+
+            if tag == "add_node":
+                node_elems = child.find_all(AVAILABLE_ALL_NODE_TYPES, recursive=False)
+                if not node_elems:
+                    raise ValueError("No node element found inside <add_node>")
+                parsed = self._parse_single_node_element(node_elems[0], agents, output_schemas)
+                ops.append(AddNode(node=parsed))
+
+            elif tag == "remove_node":
+                node_id = child.get("id")
+                if not node_id:
+                    raise ValueError("Missing 'id' attribute in <remove_node>")
+                if node_id not in current_graph.node_map:
+                    raise ValueError(f"Node '{node_id}' not found in current graph")
+                ops.append(RemoveNode(node_id=node_id))
+
+            elif tag == "replace_node":
+                node_id = child.get("id")
+                if not node_id:
+                    raise ValueError("Missing 'id' attribute in <replace_node>")
+                node_elems = child.find_all(AVAILABLE_ALL_NODE_TYPES, recursive=False)
+                if not node_elems:
+                    raise ValueError("No node element found inside <replace_node>")
+                parsed = self._parse_single_node_element(node_elems[0], agents, output_schemas)
+                ops.append(ReplaceNode(node_id=node_id, new_node=parsed))
+
+            elif tag == "add_edge":
+                source = child.get("source")
+                target = child.get("target")
+                if not source or not target:
+                    raise ValueError("Missing 'source' or 'target' attribute in <add_edge>")
+                ops.append(AddEdge(source_id=source, target_id=target))
+
+            elif tag == "remove_edge":
+                source = child.get("source")
+                target = child.get("target")
+                if not source or not target:
+                    raise ValueError("Missing 'source' or 'target' attribute in <remove_edge>")
+                ops.append(RemoveEdge(source_id=source, target_id=target))
+
+            else:
+                raise ValueError(f"Unknown delta operation: <{tag}>")
+
+        return GraphDelta(ops=ops)
+
+    def _parse_single_node_element(
+        self,
+        node_elem: BeautifulSoup,
+        agents: Dict[str, Agent],
+        output_schemas: Dict[str, Type[BaseModel]],
+    ) -> AbstractNode:
+        """
+        Parse a single node XML element into an AbstractNode, dispatching by tag name.
+
+        :param node_elem: The XML element for the node.
+        :param agents: Dictionary of pre-parsed Agent instances.
+        :param output_schemas: Dictionary of output schema models.
+        :returns: The parsed AbstractNode.
+        :raises ValueError: If the node type is unknown.
+        """
+        tool_registry = ToolRegistry()
+        tag = node_elem.name
+
+        if tag == "agent_node":
+            return self.parse_agent_node(node_elem, agents, output_schemas, tool_registry)
+        elif tag == "tool_node_with_params_conversion":
+            return self.parse_tool_node_with_params_conversion(node_elem, agents, tool_registry)
+        elif tag == "sequential_flow":
+            return self.parse_sequential_flow(node_elem, agents, output_schemas, tool_registry)
+        elif tag == "parallel_flow":
+            return self.parse_parallel_flow(node_elem, agents, output_schemas, tool_registry)
+        elif tag == "conditional_flow":
+            return self.parse_conditional_flow(node_elem, agents, output_schemas, tool_registry)
+        elif tag == "transformer_flow":
+            return self.parse_transformer_flow(node_elem, agents, output_schemas, tool_registry)
+        elif tag == "unfold_flow":
+            return self.parse_unfold_flow(node_elem, agents, output_schemas, tool_registry)
+        else:
+            raise ValueError(f"Unknown node type: <{tag}>")
 
     def _get_comparison_function(self, module_name, function_name):
         """
