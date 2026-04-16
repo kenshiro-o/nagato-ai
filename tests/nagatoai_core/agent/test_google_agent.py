@@ -286,7 +286,21 @@ def test_chat_then_tool_then_tool_response_with_error(google_client):
     # Assert final response contains the error
     assert isinstance(final_result, Exchange)
     assert final_result.agent_response.content is not None
-    assert any(keyword in final_result.agent_response.content.lower() for keyword in ["error", "unavailable", "unable", "sorry", "fail", "couldn't", "could not", "problem", "apolog", "unfortunately"])
+    assert any(
+        keyword in final_result.agent_response.content.lower()
+        for keyword in [
+            "error",
+            "unavailable",
+            "unable",
+            "sorry",
+            "fail",
+            "couldn't",
+            "could not",
+            "problem",
+            "apolog",
+            "unfortunately",
+        ]
+    )
 
 
 def test_chat_then_tool_then_tool_response_then_chat(google_client):

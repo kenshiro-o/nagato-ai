@@ -247,7 +247,19 @@ def test_chat_then_tool_then_tool_response_with_error(anthropic_client):
     assert final_result.agent_response.content is not None
     assert any(
         keyword in final_result.agent_response.content.lower()
-        for keyword in ["error", "issue", "unavailable", "unable", "sorry", "fail", "couldn't", "could not", "problem", "apolog", "unfortunately"]
+        for keyword in [
+            "error",
+            "issue",
+            "unavailable",
+            "unable",
+            "sorry",
+            "fail",
+            "couldn't",
+            "could not",
+            "problem",
+            "apolog",
+            "unfortunately",
+        ]
     )
 
 
